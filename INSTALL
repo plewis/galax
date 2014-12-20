@@ -1,0 +1,31 @@
+Galax v1.0
+Written by Paul O. Lewis
+31-October-2014
+
+Galax is a program that reads NEXUS-formatted tree files containing a posterior sample
+from a Bayesian phylogenetic MCMC analysis and estimates the total Lindley Information
+assuming that a non-informative prior was used. It also partitions the total information
+among clades using Larget's conditional clade probability approach.
+
+Galax requires the Boost libraries program_options and regex. To compile these, download
+the latest boost from http://www.boost.org/, then issue this command inside the unpacked
+boost directory:
+
+./bootstrap.sh --with-libraries=program_options,regex
+./b2
+
+The Boost libraries do not need to be installed on your system. Before compiling galax,
+define the BOOST_ROOT environmental variable to point to your boost installation: e.g.
+
+export BOOST_ROOT=/home/plewis/boost_1_56_0
+
+To install galax in your local home directory,
+
+./configure --prefix=/home/plewis
+make install
+
+To install galax systemwide,
+
+./configure
+make
+sudo make install
