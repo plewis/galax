@@ -1,1 +1,3 @@
+autoconf
 aclocal -I m4 --install
+automake
