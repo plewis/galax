@@ -7,6 +7,17 @@ from a Bayesian phylogenetic MCMC analysis and estimates the total Lindley Infor
 assuming that a non-informative prior was used. It also partitions the total information
 among clades using Larget's conditional clade probability approach.
 
+Carry out the steps below (in order) to build Galax on a Linux system.
+
+Step 0
+------
+If you have downloaded Galax from GitHub, you will need to follow all steps below. If you
+have downloaded a version that already contains a working configure script (look for a file
+named "configure" with no extensions: i.e. "configure.ac" doesn't count), and if you have
+boost_1_55_0 or later installed, you may skip directly to step 4.
+
+Step 1
+------
 Galax requires the Boost libraries program_options and regex. To compile these, download
 the latest boost from http://www.boost.org/, then issue this command inside the unpacked
 boost directory:
@@ -14,14 +25,27 @@ boost directory:
 ./bootstrap.sh --with-libraries=program_options,regex
 ./b2
 
-The Boost libraries do not need to be installed on your system. Before compiling galax,
+Step 2
+------
+The Boost libraries do not need to be installed on your system; however, you will need to
 define the BOOST_ROOT environmental variable to point to your boost installation: e.g.
 
-export BOOST_ROOT=/home/plewis/boost_1_56_0
+export BOOST_ROOT="/home/plewis/boost_1_55_0"
 
-To install galax in your local home directory,
+Note: the double quotes around the path are important!
 
-./configure --prefix=/home/plewis
+Step 3
+------
+Execute the bootstrap script in order to create the configure script:
+
+./bootstrap
+
+Step 4
+------
+Run the configure script: the version below will install galax in the bin subdirectory of
+your home directory:
+
+./configure --prefix=$HOME
 make install
 
 To install galax systemwide,
@@ -29,3 +53,10 @@ To install galax systemwide,
 ./configure
 make
 sudo make install
+
+Step 5
+------
+This step is needed only if the boost libraries are not installed systemwide. You can
+use the LD_LIBRARY_PATH environmental variable to tell Galax where they are:
+
+export LD_LIBRARY_PATH="$BOOST_ROOT/stage/lib"
