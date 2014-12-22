@@ -11,6 +11,7 @@
 
 #include <cmath>
 #include <string>
+#include <set>
 #include <boost/regex.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/lexical_cast.hpp>
