@@ -82,7 +82,7 @@ class Split
 		bool				            operator==(const Split & other) const;
 		Split &                         operator=(const Split & other);
 
-		friend std::istream &           operator>>(std::istream & in, Split & s);
+		//temporary! friend std::istream &           operator>>(std::istream & in, Split & s);
 
         //@POL 13-Nov-2007 it is currently a mystery why uncommenting the line below leads to hundreds of VC error C2679 messages: 
         // binary '<<' : no operator found which takes a right-hand operand of type <whatever> (or there is no acceptable conversion)
@@ -126,7 +126,7 @@ class Split
 /**
 *   Stream input operator used to read in a Split object from an istream.
 */
-std::istream & operator>>(std::istream & in, Split & s);
+//temporary! std::istream & operator>>(std::istream & in, Split & s);
 
 /**
 *   Fills \c missing with splits that are in \c ref_tree but absent in \c test_tree.
@@ -340,11 +340,11 @@ inline void Split::readFromString(const std::string in)
 *   output Split objects so that they can be read in using this operator. On failure, an XGalax exception will be
 *   thrown and \c s will be cleared (returned to a state identical to a default-constructed Split object).
 */
-std::istream & operator>>(std::istream & in, Split & s)
-	{
-    s.readFromStream(in);
-    return in;
-	}
+//temporary! std::istream & operator>>(std::istream & in, Split & s)
+//	{
+//    s.readFromStream(in);
+//    return in;
+//	}
 
 /**
 *   Creates a coded representation in which #_on_symbol represents bits that are "on" (that is, set to 1), #_off_symbol

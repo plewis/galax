@@ -40,9 +40,9 @@ class TreeManip
         T *                             rerootAt(int node_index);
         void                            buildFromNewick(const std::string newick, bool rooted = false);
 
-        void                            addToCCDMap();
-        void                            showCCDMap();
-        std::string                     estimateInfo(unsigned sample_size);
+        void                            addToCCDMap(unsigned subset_index, unsigned num_subsets);
+        void                            showCCDMap(unsigned subset_index);
+        std::string                     estimateInfo(unsigned sample_size, unsigned subset_index);
 
         std::string                     debugDescribeNode(T * node) const;
         std::string                     debugDescribeTree() const;
@@ -56,9 +56,10 @@ class TreeManip
         void                            rerootHelper(T * m, T * t);
 
     public:
-        typedef boost::shared_ptr< TreeManip<T> >   TreeManipShPtr;
-        typedef std::vector< Split >                SplitVector;
-        typedef std::map< SplitVector, double >     CCDMapType;
+        typedef boost::shared_ptr< TreeManip<T> >       TreeManipShPtr;
+        typedef std::vector< Split >                    SplitVector;
+        typedef std::vector< double >                   CountVector;
+        typedef std::map< SplitVector, CountVector >    CCDMapType;
 
     private:
     
@@ -422,7 +423,7 @@ inline void TreeManip<T>::extractNodeNumberFromName(T * nd, std::set<unsigned> &
     }
 
 template <class T>
-inline std::string TreeManip<T>::estimateInfo(unsigned sample_size)
+inline std::string TreeManip<T>::estimateInfo(unsigned sample_size, unsigned subset_index)
 	{
     assert(_ccdmap.size() > 0);
 
@@ -448,7 +449,9 @@ inline std::string TreeManip<T>::estimateInfo(unsigned sample_size)
     for (CCDMapType::iterator it = _ccdmap.begin(); it != _ccdmap.end(); ++it)
         {
         const SplitVector & v = it->first;
-        double count = it->second;
+        double count = it->second[subset_index];
+        if (count == 0.0)
+            continue;
         if (v[0] == clade)
             {
             double p = count/clade_denom;
@@ -498,13 +501,13 @@ inline std::string TreeManip<T>::estimateInfo(unsigned sample_size)
     }
 
 template <class T>
-inline void TreeManip<T>::showCCDMap()
+inline void TreeManip<T>::showCCDMap(unsigned subset_index)
 	{
     std::cerr << "CCD map has " << _ccdmap.size() << " elements." << std::endl;
     for (CCDMapType::iterator it = _ccdmap.begin(); it != _ccdmap.end(); ++it)
         {
         const SplitVector & v = it->first;
-        double count = it->second;
+        double count = it->second[subset_index];
         std::cerr << "\n+--------------------------" << std::endl;
         for (SplitVector::const_iterator vit = v.begin(); vit != v.end(); ++vit)
             {
@@ -515,7 +518,7 @@ inline void TreeManip<T>::showCCDMap()
     }
 
 template <class T>
-inline void TreeManip<T>::addToCCDMap()
+inline void TreeManip<T>::addToCCDMap(unsigned subset_index, unsigned num_subsets)
 	{
     BOOST_FOREACH(T * nd, _tree->_preorder)
         {
@@ -523,11 +526,17 @@ inline void TreeManip<T>::addToCCDMap()
             {
             T * a = nd->_left_child;
             T * b = nd->_left_child->_right_sib;
+
+            // Assuming trees are binary (no polytomies), so _left_child should have
+            // only one right sibling
+            if (b->_right_sib)
+                throw XGalax("Expecting all input trees to be binary, but found a polytomy");
+
             SplitVector v;
             v.push_back(nd->_split);
 
             // increment the unconditional clade count
-            efficientIncrement(_ccdmap, v);
+            efficientIncrement(_ccdmap, v, subset_index, num_subsets);
 
             if (a->_split < b->_split)
                 {
@@ -541,7 +550,7 @@ inline void TreeManip<T>::addToCCDMap()
                 }
 
             // increment the conditional clade count
-            efficientIncrement(_ccdmap, v);
+            efficientIncrement(_ccdmap, v, subset_index, num_subsets);
 
             }   // if (nd->_left_child)
         }   // BOOST_FOREACH

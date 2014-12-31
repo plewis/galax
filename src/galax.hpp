@@ -13,6 +13,7 @@
 #include <vector>
 #include <map>
 #include <boost/date_time/posix_time/posix_time.hpp>
+#include "treemanip.hpp"
 
 namespace galax {
 
@@ -27,7 +28,7 @@ class Galax
         void run(std::string treefname, std::string listfname, unsigned skip, bool trees_rooted);
 
     private:
-        void processTrees(bool rooted);
+        void processTrees(TreeManip<Node>::TreeManipShPtr tm, bool rooted, unsigned subset_index, unsigned num_subsets);
         void getTreesFromFile(std::string treefname, unsigned skip);
         std::vector<std::string> getTreeFileList(std::string listfname);
 

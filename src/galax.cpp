@@ -10,7 +10,6 @@
 #include <boost/format.hpp>
 #include "galax.hpp"
 #include "galaxutil.hpp"
-#include "treemanip.hpp"
 #include "xgalax.hpp"
 
 using namespace galax;
@@ -32,11 +31,14 @@ void Galax::getTreesFromFile(std::string treefname, unsigned skip)
     std::string file_contents;
     getFileContents(file_contents, treefname);
     parseTranslate(_translate, file_contents);
-    getNewicks(_newicks, file_contents, skip);
+
+    std::vector< std::string > tree_descriptions;
+    getNewicks(tree_descriptions, file_contents, skip);
+    _newicks.insert(_newicks.end(), tree_descriptions.begin(), tree_descriptions.end());
 
     _end_time = getCurrentTime();
     double secs = secondsElapsed(_start_time, _end_time);
-    outf << "Read " << _newicks.size() << " trees from file " << treefname << " in " << secs << " seconds" << std::endl;
+    outf << "Read " << tree_descriptions.size() << " trees from file " << treefname << " in " << secs << " seconds" << std::endl;
     _total_seconds = secs;
     }
 
@@ -63,17 +65,16 @@ std::vector<std::string> Galax::getTreeFileList(std::string listfname)
     }
 
 
-void Galax::processTrees(bool rooted)
+void Galax::processTrees(TreeManip<Node>::TreeManipShPtr tm, bool rooted, unsigned subset_index, unsigned num_subsets)
     {
     _start_time = getCurrentTime();
 
-    TreeManip<Node>::TreeManipShPtr tm(new TreeManip<Node>());
     for (std::vector< std::string >::const_iterator sit = _newicks.begin(); sit != _newicks.end(); ++sit)
         {
         try
             {
             tm->buildFromNewick(*sit, rooted);
-            tm->addToCCDMap();
+            tm->addToCCDMap(subset_index, num_subsets);
             }
         catch(XGalax & x)
             {
@@ -87,10 +88,10 @@ void Galax::processTrees(bool rooted)
     outf << "Processed " << _newicks.size() << " trees in " << secs << " seconds" << std::endl;
     _total_seconds += secs;
 
-    //tm->showCCDMap();
+    //tm->showCCDMap(subset_index);
     
     _start_time = getCurrentTime();
-    std::string infostr = tm->estimateInfo((unsigned)_newicks.size());
+    std::string infostr = tm->estimateInfo((unsigned)_newicks.size(), subset_index);
     _end_time = getCurrentTime();
 
     secs = secondsElapsed(_start_time, _end_time);
@@ -109,7 +110,13 @@ void Galax::run(std::string treefname, std::string listfname, unsigned skip, boo
     else
         treefiles.push_back(treefname);
 
+    unsigned i = 0;
+    unsigned n = (unsigned)treefiles.size();
+    TreeManip<Node>::TreeManipShPtr tm(new TreeManip<Node>());
     for (std::vector<std::string>::const_iterator it = treefiles.begin(); it != treefiles.end(); ++it)
+        {
+        _newicks.clear();
         getTreesFromFile(*it, skip);
-    processTrees(rooted);
+        processTrees(tm, rooted, i++, n);
+        }
     }

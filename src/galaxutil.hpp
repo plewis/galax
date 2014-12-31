@@ -21,7 +21,7 @@
 namespace galax
 {
 
-double logfactorial(unsigned n)
+inline double logfactorial(unsigned n)
     {
     // Returns log(n!)
     if (n == 0 || n == 1)
@@ -29,7 +29,7 @@ double logfactorial(unsigned n)
     return lgamma(n+1.0);
     }
 
-double choose(unsigned n, unsigned y)
+inline double choose(unsigned n, unsigned y)
     {
     // Returns n choose y
     double tmp = logfactorial(n) - logfactorial(y) - logfactorial(n-y);
@@ -38,7 +38,7 @@ double choose(unsigned n, unsigned y)
     return exp(tmp);
     }
 
-double lognrooted(unsigned y)
+inline double lognrooted(unsigned y)
     {
     // Returns number of rooted trees of y taxa
     double fy = (double)y;
@@ -74,7 +74,7 @@ typename MapType::iterator efficientAddOrUpdate(MapType & m, const KeyArgType & 
 // Modified version of item 24, p. 110, in Meyers, Scott. 2001. Effective STL: 50 specific ways to improve
 // your use of the Standard Template Library. Addison-Wesley, Boston.
 template< typename MapType, typename KeyArgType >
-typename MapType::iterator efficientIncrement(MapType & m, const KeyArgType & k)
+typename MapType::iterator efficientIncrement(MapType & m, const KeyArgType & k, unsigned subset_index, unsigned num_subsets)
     {
     // Find where k is, or should be
     typename MapType::iterator lb = m.lower_bound(k);
@@ -83,14 +83,16 @@ typename MapType::iterator efficientIncrement(MapType & m, const KeyArgType & k)
     if (lb != m.end() && !(m.key_comp()(k, lb->first)))
         {
         // update the pair's value and return an iterator to that pair,
-        lb->second += 1.0;
+        lb->second[subset_index] += 1.0;
         return lb;
         }
     else
         {
         // else add pair(k,v) to m and return an iterator to the new map element.
         typedef typename MapType::value_type MVT;
-        return m.insert(lb, MVT(k, 1.0));
+        std::vector<double> v(num_subsets, 0.0);
+        v[subset_index] = 1.0;
+        return m.insert(lb, MVT(k, v));
         }
     }
 
