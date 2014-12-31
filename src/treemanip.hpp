@@ -42,7 +42,7 @@ class TreeManip
 
         void                            addToCCDMap(unsigned subset_index, unsigned num_subsets);
         void                            showCCDMap(unsigned subset_index);
-        std::string                     estimateInfo(unsigned sample_size, unsigned subset_index);
+        double                          estimateInfo(std::string & infostr, unsigned sample_size, unsigned subset_index);
 
         std::string                     debugDescribeNode(T * node) const;
         std::string                     debugDescribeTree() const;
@@ -61,12 +61,17 @@ class TreeManip
         typedef std::vector< double >                   CountVector;
         typedef std::map< SplitVector, CountVector >    CCDMapType;
 
+        static const unsigned                           ALLSUBSETS;
+
     private:
-    
+
         typename Tree<T>::TreeShPtr _tree;
         CCDMapType                  _ccdmap;
     };
 
+
+template<class T>
+const unsigned TreeManip<T>::ALLSUBSETS((unsigned)-1);
 
 template <class T>
 inline std::string TreeManip<T>::debugDescribeNode(T * node) const
@@ -423,11 +428,11 @@ inline void TreeManip<T>::extractNodeNumberFromName(T * nd, std::set<unsigned> &
     }
 
 template <class T>
-inline std::string TreeManip<T>::estimateInfo(unsigned sample_size, unsigned subset_index)
+inline double TreeManip<T>::estimateInfo(std::string & s, unsigned sample_size, unsigned subset_index)
 	{
     assert(_ccdmap.size() > 0);
 
-    std::string s;
+    s = "";
     s += "\nLindley Information\n";
 
     Split clade;
@@ -449,7 +454,11 @@ inline std::string TreeManip<T>::estimateInfo(unsigned sample_size, unsigned sub
     for (CCDMapType::iterator it = _ccdmap.begin(); it != _ccdmap.end(); ++it)
         {
         const SplitVector & v = it->first;
-        double count = it->second[subset_index];
+        double count = 0.0;
+        if (subset_index < ALLSUBSETS)
+            count = it->second[subset_index];
+        else
+            count = std::accumulate(it->second.begin(), it->second.end(), 0.0);
         if (count == 0.0)
             continue;
         if (v[0] == clade)
@@ -492,12 +501,13 @@ inline std::string TreeManip<T>::estimateInfo(unsigned sample_size, unsigned sub
     double I = w*(clade_Hp - clade_H);
     double Ipct = 100.0*I/total_entropy;
     total_I += I;
+    double total_Ipct = 100.0*total_I/total_entropy;
     if (I > 0.0)
         {
         s += boost::str(boost::format(infostr) % clade.createPatternRepresentation() % clade_H % clade_Hp % (clade_Hp - clade_H) % w % I % Ipct);
         }
-    s += boost::str(boost::format("\ntotal I          = %.5f\ntotal I (%% max.) = %.5f\n") % total_I % (100.0*total_I/total_entropy));
-    return s;
+    s += boost::str(boost::format("\ntotal I          = %.5f\ntotal I (%% max.) = %.5f\n") % total_I % total_Ipct);
+    return total_Ipct;
     }
 
 template <class T>
@@ -507,7 +517,11 @@ inline void TreeManip<T>::showCCDMap(unsigned subset_index)
     for (CCDMapType::iterator it = _ccdmap.begin(); it != _ccdmap.end(); ++it)
         {
         const SplitVector & v = it->first;
-        double count = it->second[subset_index];
+        double count = 0.0;
+        if (subset_index < ALLSUBSETS)
+            count = it->second[subset_index];
+        else
+            count = std::accumulate(it->second.begin(), it->second.end(), 0.0);
         std::cerr << "\n+--------------------------" << std::endl;
         for (SplitVector::const_iterator vit = v.begin(); vit != v.end(); ++vit)
             {

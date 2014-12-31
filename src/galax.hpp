@@ -34,6 +34,7 @@ class Galax
 
     private:
         std::vector< std::string > _newicks;
+        std::vector< std::string > _merged_newicks;
         std::map< unsigned, std::string > _translate;
         boost::posix_time::ptime _start_time;
         boost::posix_time::ptime _end_time;

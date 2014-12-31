@@ -1,4 +1,15 @@
-rps11 example
+rps11 example output
+
+Read 2 tree file names from list file rps11.txt
+
+        Info        Trees       Description
+    65.14748         1000       trees3prime.t
+    70.52154         1000       trees5prime.t
+    67.83451         2000       average
+    46.17921         2000       merged
+    21.65530         2000       difference
+
+Required 0.082 total seconds
 
 ----- 5-prime info -----------------------------------------------------------------------
 
