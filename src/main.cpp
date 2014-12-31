@@ -21,6 +21,7 @@ std::string program_name = "galax";
 unsigned major_version = 1;
 unsigned minor_version = 0;
 std::string tree_file_name = "";
+std::string list_file_name = "";
 std::string output_file_name = "output-galax.txt";
 unsigned skipped_newicks = 0;
 bool trees_rooted = false;
@@ -37,6 +38,7 @@ void processCommandLineOptions(int argc, const char * argv[])
         ("rooted,r", boost::program_options::bool_switch()->default_value(false), "expect trees to be rooted (leave out this option to assume unrooted)")
         ("skip,s", boost::program_options::value<unsigned>(), "number of tree descriptions to skip at beginning of tree file")
         ("treefile,t", boost::program_options::value<std::string>(), "name of tree file in NEXUS format")
+        ("listfile,l", boost::program_options::value<std::string>(), "name of file listing whitespace-separated, NEXUS-formatted tree file names to be processed")
         ("outfile,t", boost::program_options::value<std::string>(), "name of output file to create")
         ;
     boost::program_options::store(boost::program_options::parse_command_line(argc, argv, desc), vm);
@@ -104,15 +106,37 @@ void processCommandLineOptions(int argc, const char * argv[])
         {
         tree_file_name = vm["treefile"].as<std::string>();
         }
-    else
+
+    // Assuming user used --listfile on command line or listfile=<file name> in config file, store supplied file name
+    if (vm.count("listfile") > 0)
         {
-        std::cout << "Must specify --treefile on command line or in config file\n";
+        list_file_name = vm["listfile"].as<std::string>();
+        }
+
+    // Check to make sure user did not specify both --treefile and --listfile
+    if (list_file_name.size() > 0 && tree_file_name.size() > 0)
+        {
+        std::cout << "Cannot specify both --treefile and --listfile on command line or in config file\n";
         std::cout << desc << std::endl;
         std::exit(1);
         }
 
+    // Check to make sure user specified either --treefile or --listfile
+    if (list_file_name.size() == 0 && tree_file_name.size() == 0)
+        {
+        std::cout << "Must specify either --treefile or --listfile on command line or in config file\n";
+        std::cout << desc << std::endl;
+        std::exit(1);
+        }
+
+    // Output feedback to reassure user
+
+    if (list_file_name.size() > 0)
+        std::cout << "Trees will be read from tree files specified in file " << list_file_name << std::endl;
+    else
+        std::cout << "Trees will be read from file " << tree_file_name << std::endl;
+
     std::cout << "Output will be stored in file " << output_file_name << std::endl;
-    std::cout << "Trees will be read from file " << tree_file_name << std::endl;
 
     if (trees_rooted)
         std::cout << "Trees assumed to be rooted" << std::endl;
@@ -131,7 +155,7 @@ int main(int argc, const char * argv[])
     {
     processCommandLineOptions(argc, argv);
 
-    Galax(output_file_name).run(tree_file_name, skipped_newicks, trees_rooted);
+    Galax(output_file_name).run(tree_file_name, list_file_name, skipped_newicks, trees_rooted);
 
     return 0;
     }

@@ -24,11 +24,12 @@ class Galax
         Galax(const std::string outfname);
         ~Galax();
 
-        void run(std::string treefname, unsigned skip, bool trees_rooted);
+        void run(std::string treefname, std::string listfname, unsigned skip, bool trees_rooted);
 
     private:
         void processTrees(bool rooted);
         void getTreesFromFile(std::string treefname, unsigned skip);
+        std::vector<std::string> getTreeFileList(std::string listfname);
 
     private:
         std::vector< std::string > _newicks;

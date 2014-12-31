@@ -128,6 +128,21 @@ inline void getFileContents(std::string & file_contents, std::string filename)
 
     }
 
+inline void extractAllWhitespaceDelimitedStrings(std::vector<std::string> & receiving_vector, const std::string & text_to_process)
+    {
+    receiving_vector.clear();
+
+    // Use regular expression to divide text_to_process into whitespace-delimited strings, which are stored in receiving_vector
+    boost::regex re("\\s+");
+    boost::sregex_token_iterator i(text_to_process.begin(), text_to_process.end(), re, -1);
+    boost::sregex_token_iterator j;
+
+    while(i != j)
+        {
+        receiving_vector.push_back(*i++);
+        }
+    }
+
 inline void parseTranslate(std::map< unsigned, std::string > & translate_map, const std::string & file_contents)
     {
     // First, separate out the contents of the translate statement from the rest of the tree file

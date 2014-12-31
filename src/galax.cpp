@@ -40,6 +40,29 @@ void Galax::getTreesFromFile(std::string treefname, unsigned skip)
     _total_seconds = secs;
     }
 
+std::vector<std::string> Galax::getTreeFileList(std::string listfname)
+    {
+    _start_time = getCurrentTime();
+
+    std::string file_contents;
+    getFileContents(file_contents, listfname);
+
+    std::vector<std::string> tree_file_names;
+    extractAllWhitespaceDelimitedStrings(tree_file_names, file_contents);
+
+    _end_time = getCurrentTime();
+    double secs = secondsElapsed(_start_time, _end_time);
+    unsigned ntreefilenames = (unsigned)tree_file_names.size();
+    if (ntreefilenames == 1)
+        outf << "Read 1 tree file name from list file " << listfname << " in " << secs << " seconds" << std::endl;
+    else
+        outf << "Read " << ntreefilenames << " tree file names from list file " << listfname << " in " << secs << " seconds" << std::endl;
+    _total_seconds = secs;
+
+    return tree_file_names;
+    }
+
+
 void Galax::processTrees(bool rooted)
     {
     _start_time = getCurrentTime();
@@ -78,8 +101,15 @@ void Galax::processTrees(bool rooted)
     outf << "Required " << _total_seconds << " total seconds" << std::endl;
     }
 
-void Galax::run(std::string treefname, unsigned skip, bool rooted)
+void Galax::run(std::string treefname, std::string listfname, unsigned skip, bool rooted)
     {
-    getTreesFromFile(treefname, skip);
+    std::vector<std::string> treefiles;
+    if (listfname.size() > 0)
+        treefiles = getTreeFileList(listfname);
+    else
+        treefiles.push_back(treefname);
+
+    for (std::vector<std::string>::const_iterator it = treefiles.begin(); it != treefiles.end(); ++it)
+        getTreesFromFile(*it, skip);
     processTrees(rooted);
     }
