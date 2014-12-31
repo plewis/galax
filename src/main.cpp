@@ -22,9 +22,10 @@ unsigned major_version = 1;
 unsigned minor_version = 0;
 std::string tree_file_name = "";
 std::string list_file_name = "";
-std::string output_file_name = "output-galax.txt";
+std::string output_file_name = "output-galax";
 unsigned skipped_newicks = 0;
 bool trees_rooted = false;
+bool save_details = false;
 
 void processCommandLineOptions(int argc, const char * argv[])
     {
@@ -36,10 +37,11 @@ void processCommandLineOptions(int argc, const char * argv[])
         ("help,h", "produce help message")
         ("version,v", "show program version")
         ("rooted,r", boost::program_options::bool_switch()->default_value(false), "expect trees to be rooted (leave out this option to assume unrooted)")
+        ("details,d", boost::program_options::bool_switch()->default_value(false), "save information content details for each tree file")
         ("skip,s", boost::program_options::value<unsigned>(), "number of tree descriptions to skip at beginning of tree file")
         ("treefile,t", boost::program_options::value<std::string>(), "name of tree file in NEXUS format")
         ("listfile,l", boost::program_options::value<std::string>(), "name of file listing whitespace-separated, NEXUS-formatted tree file names to be processed")
-        ("outfile,t", boost::program_options::value<std::string>(), "name of output file to create")
+        ("outfile,o", boost::program_options::value<std::string>(), "file name prefix of output file to create (.txt extension will be added)")
         ;
     boost::program_options::store(boost::program_options::parse_command_line(argc, argv, desc), vm);
     try
@@ -89,13 +91,19 @@ void processCommandLineOptions(int argc, const char * argv[])
         trees_rooted = vm["rooted"].as<bool>();
         }
 
+    // If user used --details on command line, save details of the information content for each tree file processed
+    if (vm.count("details"))
+        {
+        save_details = vm["details"].as<bool>();
+        }
+
     // If user used --skip on command line, store number of tree descriptions to skip
     if (vm.count("skip"))
         {
         skipped_newicks = vm["skip"].as<unsigned>();
         }
 
-    // Assuming user used --outfile on command line or outfile=<file name> in config file, store supplied file name
+    // Assuming user used --outfile on command line or outfile=<file name> in config file, store supplied file name prefix
     if (vm.count("outfile") > 0)
         {
         output_file_name = vm["outfile"].as<std::string>();
@@ -143,6 +151,11 @@ void processCommandLineOptions(int argc, const char * argv[])
     else
         std::cout << "Trees assumed to be unrooted" << std::endl;
 
+    if (save_details)
+        std::cout << "Information content details will be saved for each tree file processed" << std::endl;
+    else
+        std::cout << "Information content details will not be saved (only the overall percent will be reported)" << std::endl;
+
     if (skipped_newicks == 0)
         std::cout << "No trees will be skipped" << std::endl;
     else if (skipped_newicks == 1)
@@ -155,7 +168,7 @@ int main(int argc, const char * argv[])
     {
     processCommandLineOptions(argc, argv);
 
-    Galax(output_file_name).run(tree_file_name, list_file_name, skipped_newicks, trees_rooted);
+    Galax(output_file_name).run(tree_file_name, list_file_name, skipped_newicks, trees_rooted, save_details);
 
     return 0;
     }

@@ -14,14 +14,16 @@
 
 using namespace galax;
 
-Galax::Galax(const std::string outfname)
+Galax::Galax(const std::string outfile_prefix)
     {
-    outf.open(outfname.c_str());
+    _outfprefix = outfile_prefix;
+    std::string outfname = outfile_prefix + ".txt";
+    _outf.open(outfname.c_str());
     }
 
 Galax::~Galax()
     {
-    outf.close();
+    _outf.close();
     }
 
 void Galax::getTreesFromFile(std::string treefname, unsigned skip)
@@ -71,7 +73,7 @@ void Galax::processTrees(TreeManip<Node>::TreeManipShPtr tm, bool rooted, unsign
             }
         catch(XGalax & x)
             {
-            outf << "ERROR: " << x.what() << std::endl;
+            _outf << "ERROR: " << x.what() << std::endl;
             std::exit(1);
             }
         }
@@ -80,7 +82,38 @@ void Galax::processTrees(TreeManip<Node>::TreeManipShPtr tm, bool rooted, unsign
     _total_seconds += secondsElapsed(_start_time, _end_time);
     }
 
-void Galax::run(std::string treefname, std::string listfname, unsigned skip, bool rooted)
+double Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, unsigned subset_index, unsigned num_subsets, bool details)
+    {
+    std::string infostr;
+
+    _start_time = getCurrentTime();
+
+    unsigned which_subset = num_subsets + 1;
+    std::vector< std::string > & tree_descriptions = _newicks;
+    if (subset_index == TreeManip<Node>::ALLSUBSETS)
+        {
+        tree_descriptions = _merged_newicks;
+        }
+    else
+        which_subset = subset_index + 1;
+
+    double info = tm->estimateInfo(infostr, (unsigned)tree_descriptions.size(), subset_index);
+
+    if (details)
+        {
+        std::string outfname = boost::str(boost::format("%s-%d.txt") % _outfprefix % which_subset);
+        std::ofstream tmpf(outfname.c_str());
+        tmpf << infostr << std::endl;
+        tmpf.close();
+        }
+
+    _end_time = getCurrentTime();
+    _total_seconds += secondsElapsed(_start_time, _end_time);
+
+    return info;
+    }
+
+void Galax::run(std::string treefname, std::string listfname, unsigned skip, bool rooted, bool details)
     {
     std::vector<std::string> treefiles;
     if (listfname.size() > 0)
@@ -90,9 +123,9 @@ void Galax::run(std::string treefname, std::string listfname, unsigned skip, boo
 
     unsigned ntreefiles = (unsigned)treefiles.size();
     if (ntreefiles == 1)
-        outf << "Read 1 tree file name from list file " << listfname << std::endl;
+        _outf << "Read 1 tree file name from list file " << listfname << std::endl;
     else
-        outf << "Read " << ntreefiles << " tree file names from list file " << listfname << std::endl;
+        _outf << "Read " << ntreefiles << " tree file names from list file " << listfname << std::endl;
 
     unsigned n = (unsigned)treefiles.size();
     TreeManip<Node>::TreeManipShPtr tm(new TreeManip<Node>());
@@ -102,7 +135,7 @@ void Galax::run(std::string treefname, std::string listfname, unsigned skip, boo
     unsigned total_trees = 0;
 
     unsigned subset_index = 0;
-    outf << boost::str(boost::format("\n%12s %12s       %s\n") % "Info" % "Trees" % "Description");
+    _outf << boost::str(boost::format("\n%12s %12s %12s       %s\n") % "Number" % "Info" % "Trees" % "Description");
     for (std::vector<std::string>::const_iterator it = treefiles.begin(); it != treefiles.end(); ++it)
         {
         _newicks.clear();
@@ -111,33 +144,27 @@ void Galax::run(std::string treefname, std::string listfname, unsigned skip, boo
 
         getTreesFromFile(treefname, skip);
         processTrees(tm, rooted, subset_index, n);
+
         unsigned ntrees = (unsigned)_newicks.size();
         total_trees += ntrees;
 
         //tm->showCCDMap(subset_index);
         
-        _start_time = getCurrentTime();
-        info = tm->estimateInfo(infostr, (unsigned)_newicks.size(), subset_index);
-        _end_time = getCurrentTime();
-        _total_seconds += secondsElapsed(_start_time, _end_time);
-
+        info = estimateInfo(tm, subset_index, ntreefiles, details);
         sum_info += info;
 
-        outf << boost::str(boost::format("%12.5f %12d       %s\n") % info % ntrees % treefname.c_str());
+        _outf << boost::str(boost::format("%12d %12.5f %12d       %s\n") % (subset_index+1) % info % ntrees % treefname.c_str());
         ++subset_index;
         }
 
     double average_info = sum_info/ntreefiles;
-    outf << boost::str(boost::format("%12.5f %12d       %s\n") % average_info % total_trees % "average");
+    _outf << boost::str(boost::format("%12s %12.5f %12d       %s\n") % " " % average_info % total_trees % "average");
 
-    _start_time = getCurrentTime();
-    info = tm->estimateInfo(infostr, (unsigned)_merged_newicks.size(), TreeManip<Node>::ALLSUBSETS);
-    _end_time = getCurrentTime();
-    _total_seconds += secondsElapsed(_start_time, _end_time);
-    outf << boost::str(boost::format("%12.5f %12d       %s\n") % info % total_trees % "merged");
+    info = estimateInfo(tm, TreeManip<Node>::ALLSUBSETS, ntreefiles, details);
+    _outf << boost::str(boost::format("%12d %12.5f %12d       %s\n") % (ntreefiles + 1) % info % total_trees % "merged");
 
     double diff = average_info - info;
-    outf << boost::str(boost::format("%12.5f %12d       %s\n") % diff % total_trees % "difference");
+    _outf << boost::str(boost::format("%12s %12.5f %12d       %s\n") % " " % diff % total_trees % "difference");
 
-    outf << "\nRequired " << _total_seconds << " total seconds" << std::endl;
+    _outf << "\nRequired " << _total_seconds << " total seconds" << std::endl;
     }

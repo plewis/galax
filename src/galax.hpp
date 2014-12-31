@@ -22,12 +22,13 @@ extern const double _smallest_edge_length;
 class Galax
     {
     public:
-        Galax(const std::string outfname);
+        Galax(const std::string outfile_prefix);
         ~Galax();
 
-        void run(std::string treefname, std::string listfname, unsigned skip, bool trees_rooted);
+        void run(std::string treefname, std::string listfname, unsigned skip, bool trees_rooted, bool save_details);
 
     private:
+        double estimateInfo(TreeManip<Node>::TreeManipShPtr tm, unsigned subset_index, unsigned num_subsets, bool details);
         void processTrees(TreeManip<Node>::TreeManipShPtr tm, bool rooted, unsigned subset_index, unsigned num_subsets);
         void getTreesFromFile(std::string treefname, unsigned skip);
         std::vector<std::string> getTreeFileList(std::string listfname);
@@ -39,7 +40,8 @@ class Galax
         boost::posix_time::ptime _start_time;
         boost::posix_time::ptime _end_time;
         double _total_seconds;
-        std::ofstream outf;
+        std::string _outfprefix;
+        std::ofstream _outf;
     };
 
 }
