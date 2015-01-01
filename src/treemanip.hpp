@@ -432,18 +432,19 @@ inline double TreeManip<T>::estimateInfo(std::string & s, unsigned sample_size, 
 	{
     assert(_ccdmap.size() > 0);
 
-    s = "";
-    s += "\nLindley Information\n";
-
-    Split clade;
+    // Determine maximum possible entropy
     Split first_clade = (_ccdmap.begin()->first)[0];
     unsigned ntaxa = first_clade.countOnBits() + first_clade.countOffBits();
     if (!_tree->_is_rooted)
         ntaxa -= 1;
     double total_entropy = lognrooted(ntaxa);
+
+    s = "";
+    s += "\nLindley Information\n";
     s += boost::str(boost::format("  number of taxa: %d\n") % ntaxa);
     s += boost::str(boost::format("  total prior entropy: %.5f\n") % total_entropy);
 
+    Split clade;
     double total_I = 0.0;
     double clade_H = 0.0;
     double clade_Hp = 0.0;
@@ -453,7 +454,10 @@ inline double TreeManip<T>::estimateInfo(std::string & s, unsigned sample_size, 
     const char infostr[] = "\nClade %s\n  H          = %.5f\n  Hp         = %.5f\n  Hp - H     = %.5f\n  w          = %.5f\n  I          = %.5f\n  I (%% max.) = %.5f\n";
     for (CCDMapType::iterator it = _ccdmap.begin(); it != _ccdmap.end(); ++it)
         {
+        // v contains either 1 split (unconditional) or 3 splits (conditional)
         const SplitVector & v = it->first;
+
+        // count contains either the count for a specific subset or sum of counts over all subsets
         double count = 0.0;
         if (subset_index < ALLSUBSETS)
             count = it->second[subset_index];
@@ -461,6 +465,56 @@ inline double TreeManip<T>::estimateInfo(std::string & s, unsigned sample_size, 
             count = std::accumulate(it->second.begin(), it->second.end(), 0.0);
         if (count == 0.0)
             continue;
+
+#if 1
+        // Depends on _ccdmap keys (split vectors) being sorted such that an entry for an unconditional clade (e.g. ABC)
+        // precedes any conditional clade entries (e.g. A|BC) that have that clade as parent. Thus, when next unconditional
+        // clade entry is encountered, we know that there are no more conditional clade entries for the previous parent
+        // clade and we can at that point compute the information for the previous parent.
+        if (first)
+            {
+            first = false;
+
+            // Initialize data for first clade
+            assert(v.size() == 1);  // first entry should be an unconditional clade entry
+            clade = v[0];
+            clade_Hp = lognrooted(clade.countOnBits());
+            clade_H = 0.0;
+            clade_denom = count;
+            }
+        else
+            {
+            if (v[0] == clade)
+                {
+                // Conditional clade entry whose parent is clade
+                double p = count/clade_denom;
+                clade_H -= p*log(p);
+                assert(v.size() == 3); // parent clade, left clade, right clade
+                clade_Hp -= p*(lognrooted((v[1].countOnBits())) + lognrooted(v[2].countOnBits()));
+                }
+            else
+                {
+                // Just found next unconditional clade entry
+
+                // Compute I for previous clade
+                double w = clade_denom/total_trees; // marginal posterior clade probability
+                double I = w*(clade_Hp - clade_H);
+                double Ipct = 100.0*I/total_entropy;
+                total_I += I;
+                if (I > 0.0)
+                    {
+                    s += boost::str(boost::format(infostr) % clade.createPatternRepresentation() % clade_H % clade_Hp % (clade_Hp - clade_H) % w % I % Ipct);
+                    }
+
+                // Initialize data for next clade
+                clade = v[0];
+                clade_Hp = lognrooted(clade.countOnBits());
+                clade_H = 0.0;
+                assert(v.size() == 1);
+                clade_denom = count;
+                }
+            }
+#else
         if (v[0] == clade)
             {
             double p = count/clade_denom;
@@ -480,13 +534,6 @@ inline double TreeManip<T>::estimateInfo(std::string & s, unsigned sample_size, 
                 total_I += I;
                 if (I > 0.0)
                     {
-                    //s += boost::str(boost::format("\nClade %s\n") % clade.createPatternRepresentation());
-                    //s += boost::str(boost::format("  H          = %.5f\n") % clade_H);
-                    //s += boost::str(boost::format("  Hp         = %.5f\n") % clade_Hp);
-                    //s += boost::str(boost::format("  Hp - H     = %.5f\n") % (clade_Hp - clade_H));
-                    //s += boost::str(boost::format("  w          = %.5f\n") % w);
-                    //s += boost::str(boost::format("  I          = %.5f\n") % I);
-                    //s += boost::str(boost::format("  I (% max.) = %.5f\n") % Ipct);
                     s += boost::str(boost::format(infostr) % clade.createPatternRepresentation() % clade_H % clade_Hp % (clade_Hp - clade_H) % w % I % Ipct);
                     }
                 }
@@ -496,16 +543,21 @@ inline double TreeManip<T>::estimateInfo(std::string & s, unsigned sample_size, 
             assert(v.size() == 1);
             clade_denom = count;
             }
+#endif
         }
+
+    // Compute I for final clade
     double w = clade_denom/total_trees;
     double I = w*(clade_Hp - clade_H);
     double Ipct = 100.0*I/total_entropy;
     total_I += I;
-    double total_Ipct = 100.0*total_I/total_entropy;
     if (I > 0.0)
         {
         s += boost::str(boost::format(infostr) % clade.createPatternRepresentation() % clade_H % clade_Hp % (clade_Hp - clade_H) % w % I % Ipct);
         }
+
+    // Report and return total I as a percentage
+    double total_Ipct = 100.0*total_I/total_entropy;
     s += boost::str(boost::format("\ntotal I          = %.5f\ntotal I (%% max.) = %.5f\n") % total_I % total_Ipct);
     return total_Ipct;
     }
@@ -541,8 +593,7 @@ inline void TreeManip<T>::addToCCDMap(unsigned subset_index, unsigned num_subset
             T * a = nd->_left_child;
             T * b = nd->_left_child->_right_sib;
 
-            // Assuming trees are binary (no polytomies), so _left_child should have
-            // only one right sibling
+            // Assuming trees are binary (no polytomies), so _left_child should have only one right sibling
             if (b->_right_sib)
                 throw XGalax("Expecting all input trees to be binary, but found a polytomy");
 
