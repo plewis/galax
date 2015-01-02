@@ -19,13 +19,12 @@ using namespace galax;
 
 std::string program_name = "galax";
 unsigned major_version = 1;
-unsigned minor_version = 0;
+unsigned minor_version = 1;
 std::string tree_file_name = "";
 std::string list_file_name = "";
 std::string output_file_name = "output-galax";
 unsigned skipped_newicks = 0;
 bool trees_rooted = false;
-bool save_details = false;
 
 void processCommandLineOptions(int argc, const char * argv[])
     {
@@ -91,12 +90,6 @@ void processCommandLineOptions(int argc, const char * argv[])
         trees_rooted = vm["rooted"].as<bool>();
         }
 
-    // If user used --details on command line, save details of the information content for each tree file processed
-    if (vm.count("details"))
-        {
-        save_details = vm["details"].as<bool>();
-        }
-
     // If user used --skip on command line, store number of tree descriptions to skip
     if (vm.count("skip"))
         {
@@ -151,11 +144,6 @@ void processCommandLineOptions(int argc, const char * argv[])
     else
         std::cout << "Trees assumed to be unrooted" << std::endl;
 
-    if (save_details)
-        std::cout << "Information content details will be saved for each tree file processed" << std::endl;
-    else
-        std::cout << "Information content details will not be saved (only the overall percent will be reported)" << std::endl;
-
     if (skipped_newicks == 0)
         std::cout << "No trees will be skipped" << std::endl;
     else if (skipped_newicks == 1)
@@ -168,7 +156,7 @@ int main(int argc, const char * argv[])
     {
     processCommandLineOptions(argc, argv);
 
-    Galax(output_file_name).run(tree_file_name, list_file_name, skipped_newicks, trees_rooted, save_details);
+    Galax(output_file_name).run(tree_file_name, list_file_name, skipped_newicks, trees_rooted);
 
     return 0;
     }

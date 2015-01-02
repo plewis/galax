@@ -25,15 +25,16 @@ class Galax
         Galax(const std::string outfile_prefix);
         ~Galax();
 
-        void run(std::string treefname, std::string listfname, unsigned skip, bool trees_rooted, bool save_details);
+        void run(std::string treefname, std::string listfname, unsigned skip, bool trees_rooted);
 
     private:
-        double estimateInfo(TreeManip<Node>::TreeManipShPtr tm, unsigned subset_index, unsigned num_subsets, bool details);
+        void estimateInfo(TreeManip<Node>::TreeManipShPtr tm, std::string & infostr);
         void processTrees(TreeManip<Node>::TreeManipShPtr tm, bool rooted, unsigned subset_index, unsigned num_subsets);
         void getTreesFromFile(std::string treefname, unsigned skip);
         std::vector<std::string> getTreeFileList(std::string listfname);
 
     private:
+        std::vector< std::string > _treefile_names;
         std::vector< std::string > _newicks;
         std::vector< std::string > _merged_newicks;
         std::vector< unsigned > _tree_counts;

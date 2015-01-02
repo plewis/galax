@@ -84,88 +84,47 @@ void Galax::processTrees(TreeManip<Node>::TreeManipShPtr tm, bool rooted, unsign
     _total_seconds += secondsElapsed(_start_time, _end_time);
     }
 
-double Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, unsigned subset_index, unsigned num_subsets, bool details)
+void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, std::string & infostr)
     {
-    std::string infostr;
-
     _start_time = getCurrentTime();
 
-    double info = 0.0;
-    unsigned which_subset = num_subsets + 1;
-    if (subset_index == TreeManip<Node>::ALLSUBSETS)
-        {
-        info = tm->estimateMergedInfo(infostr, _tree_counts);
-        }
-    else
-        {
-        which_subset = subset_index + 1;
-        info = tm->estimateSubsetInfo(infostr, (unsigned)_newicks.size(), subset_index);
-        }
-
-    if (details)
-        {
-        std::string outfname = boost::str(boost::format("%s-%d.txt") % _outfprefix % which_subset);
-        std::ofstream tmpf(outfname.c_str());
-        tmpf << infostr << std::endl;
-        tmpf.close();
-        }
+    tm->estimateMergedInfo(infostr, _tree_counts, _treefile_names);
 
     _end_time = getCurrentTime();
     _total_seconds += secondsElapsed(_start_time, _end_time);
-
-    return info;
     }
 
-void Galax::run(std::string treefname, std::string listfname, unsigned skip, bool rooted, bool details)
+void Galax::run(std::string treefname, std::string listfname, unsigned skip, bool rooted)
     {
-    std::vector<std::string> treefiles;
+    _treefile_names.clear();
     if (listfname.size() > 0)
-        treefiles = getTreeFileList(listfname);
+        _treefile_names = getTreeFileList(listfname);
     else
-        treefiles.push_back(treefname);
+        _treefile_names.push_back(treefname);
 
-    unsigned ntreefiles = (unsigned)treefiles.size();
+    unsigned ntreefiles = (unsigned)_treefile_names.size();
     if (ntreefiles == 1)
         _outf << "Read 1 tree file name from list file " << listfname << std::endl;
     else
         _outf << "Read " << ntreefiles << " tree file names from list file " << listfname << std::endl;
 
-    unsigned n = (unsigned)treefiles.size();
+    unsigned n = (unsigned)_treefile_names.size();
     TreeManip<Node>::TreeManipShPtr tm(new TreeManip<Node>());
-    std::string infostr;
-    double info;
-    double sum_info = 0.0;
-    unsigned total_trees = 0;
 
     unsigned subset_index = 0;
-    _outf << boost::str(boost::format("\n%12s %12s %12s       %s\n") % "Number" % "Info" % "Trees" % "Description");
-    for (std::vector<std::string>::const_iterator it = treefiles.begin(); it != treefiles.end(); ++it)
+    for (std::vector<std::string>::const_iterator it = _treefile_names.begin(); it != _treefile_names.end(); ++it)
         {
         std::string treefname = *it;
 
         getTreesFromFile(treefname, skip);
         processTrees(tm, rooted, subset_index, n);
 
-        unsigned ntrees = (unsigned)_newicks.size();
-        total_trees += ntrees;
-
-        //tm->showCCDMap(subset_index);
-        
-        info = estimateInfo(tm, subset_index, ntreefiles, details);
-        sum_info += info;
-
-        _outf << boost::str(boost::format("%12d %12.5f %12d       %s\n") % (subset_index+1) % info % ntrees % treefname.c_str());
         ++subset_index;
         }
 
-    double average_info = sum_info/ntreefiles;
-    _outf << boost::str(boost::format("%12s %12.5f %12d       %s\n") % " " % average_info % total_trees % "average");
-
-    info = estimateInfo(tm, TreeManip<Node>::ALLSUBSETS, ntreefiles, details);
-    _outf << boost::str(boost::format("%12d %12.5f %12d       %s\n") % (ntreefiles + 1) % info % total_trees % "merged");
-
-    double diff = average_info - info;
-    _outf << boost::str(boost::format("%12s %12.5f %12d       %s\n") % " " % diff % total_trees % "difference");
+    std::string infostr;
+    estimateInfo(tm, infostr);
+    _outf << "\n" << infostr;
 
     _outf << "\nRequired " << _total_seconds << " total seconds" << std::endl;
     }
