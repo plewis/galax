@@ -36,6 +36,8 @@ void Galax::getTreesFromFile(std::string treefname, unsigned skip)
 
     std::vector< std::string > tree_descriptions;
     getNewicks(tree_descriptions, file_contents, skip);
+    _tree_counts.push_back((unsigned)tree_descriptions.size());
+    _newicks.clear();
     _newicks.insert(_newicks.end(), tree_descriptions.begin(), tree_descriptions.end());
     _merged_newicks.insert(_merged_newicks.end(), tree_descriptions.begin(), tree_descriptions.end());
 
@@ -88,16 +90,17 @@ double Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, unsigned subset_i
 
     _start_time = getCurrentTime();
 
+    double info = 0.0;
     unsigned which_subset = num_subsets + 1;
-    std::vector< std::string > & tree_descriptions = _newicks;
     if (subset_index == TreeManip<Node>::ALLSUBSETS)
         {
-        tree_descriptions = _merged_newicks;
+        info = tm->estimateMergedInfo(infostr, _tree_counts);
         }
     else
+        {
         which_subset = subset_index + 1;
-
-    double info = tm->estimateInfo(infostr, (unsigned)tree_descriptions.size(), subset_index);
+        info = tm->estimateSubsetInfo(infostr, (unsigned)_newicks.size(), subset_index);
+        }
 
     if (details)
         {
@@ -138,8 +141,6 @@ void Galax::run(std::string treefname, std::string listfname, unsigned skip, boo
     _outf << boost::str(boost::format("\n%12s %12s %12s       %s\n") % "Number" % "Info" % "Trees" % "Description");
     for (std::vector<std::string>::const_iterator it = treefiles.begin(); it != treefiles.end(); ++it)
         {
-        _newicks.clear();
-
         std::string treefname = *it;
 
         getTreesFromFile(treefname, skip);
