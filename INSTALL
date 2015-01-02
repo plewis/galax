@@ -60,3 +60,11 @@ This step is needed only if the boost libraries are not installed systemwide. Yo
 use the LD_LIBRARY_PATH environmental variable to tell Galax where they are:
 
 export LD_LIBRARY_PATH="$BOOST_ROOT/stage/lib"
+
+Step 6
+------
+This step is needed only if you want to produce a tar file containing sources:
+
+make dist
+
+
