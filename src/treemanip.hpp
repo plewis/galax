@@ -42,8 +42,7 @@ class TreeManip
 
         void                            addToCCDMap(unsigned subset_index, unsigned num_subsets);
         void                            showCCDMap(unsigned subset_index);
-        double                          estimateSubsetInfo(std::string & infostr, unsigned sample_size, unsigned subset_index);
-        double                          estimateMergedInfo(std::string & infostr, std::vector<unsigned> & tree_counts, std::vector< std::string > & treefile_names);
+        void                            estimateMergedInfo(std::string & infostr, std::vector<unsigned> & tree_counts, std::vector< std::string > & treefile_names);
 
         std::string                     debugDescribeNode(T * node) const;
         std::string                     debugDescribeTree() const;
@@ -429,7 +428,7 @@ inline void TreeManip<T>::extractNodeNumberFromName(T * nd, std::set<unsigned> &
     }
 
 template <class T>
-inline double TreeManip<T>::estimateMergedInfo(std::string & s, std::vector<unsigned> & tree_counts, std::vector< std::string > & treefile_names)
+inline void TreeManip<T>::estimateMergedInfo(std::string & s, std::vector<unsigned> & tree_counts, std::vector< std::string > & treefile_names)
 	{
     assert(_ccdmap.size() > 0);
 
@@ -450,14 +449,13 @@ inline double TreeManip<T>::estimateMergedInfo(std::string & s, std::vector<unsi
 
     Split clade;
 
-    std::vector<double> total_I(num_subsets+1, 0.0);
     std::vector<double> clade_H(num_subsets+1, 0.0);
     std::vector<double> clade_Hp(num_subsets+1, 0.0);
     std::vector<double> clade_denom(num_subsets+1, 0.0);
     std::vector<double> w(num_subsets+1, 0.0);
     std::vector<double> I(num_subsets+1, 0.0);
     std::vector<double> Ipct(num_subsets+1, 0.0);
-    std::vector<double> total_Ipct(num_subsets+1, 0.0);
+    std::vector<double> total_I(num_subsets+1, 0.0);
 
     double total_D = 0.0;
     bool first = true;
@@ -541,10 +539,12 @@ inline double TreeManip<T>::estimateMergedInfo(std::string & s, std::vector<unsi
                         {
                         // Compute I for previous clade
                         w[subset_index] = clade_denom[subset_index]/tree_counts[subset_index]; // marginal posterior clade probability
+
                         I[subset_index] = w[subset_index]*(clade_Hp[subset_index] - clade_H[subset_index]);
+                        total_I[subset_index] += I[subset_index];
+
                         Ipct[subset_index] = 100.0*I[subset_index]/total_entropy;
                         sum_Ipct += Ipct[subset_index];
-                        total_I[subset_index] += I[subset_index];
 
                         // Initialize data for next clade
                         clade_Hp[subset_index] = lognrooted(clade.countOnBits());
@@ -559,14 +559,16 @@ inline double TreeManip<T>::estimateMergedInfo(std::string & s, std::vector<unsi
                 // handle merged case
                 // Compute I for previous clade
                 w[num_subsets] = clade_denom[num_subsets]/total_trees; // marginal posterior clade probability
+
                 I[num_subsets] = w[num_subsets]*(clade_Hp[num_subsets] - clade_H[num_subsets]);
+                total_I[num_subsets] += I[num_subsets];
+
                 Ipct[num_subsets] = 100.0*I[num_subsets]/total_entropy;
 
                 // Compute clade-specific D
                 double D = (sum_Ipct/num_subsets) - Ipct[num_subsets];
                 total_D += D;
 
-                total_I[num_subsets] += I[num_subsets];
                 if (I[num_subsets] > 0.0)
                     {
                     s += boost::str(boost::format("\nClade %s\n") % clade.createPatternRepresentation());
@@ -641,26 +643,26 @@ inline double TreeManip<T>::estimateMergedInfo(std::string & s, std::vector<unsi
         if (clade_denom[subset_index] > 0)
             {
             w[subset_index] = clade_denom[subset_index]/tree_counts[subset_index];
+
             I[subset_index] = w[subset_index]*(clade_Hp[subset_index] - clade_H[subset_index]);
-            Ipct[subset_index] = 100.0*I[subset_index]/total_entropy;
-            sum_Ipct += Ipct[subset_index];
             total_I[subset_index] += I[subset_index];
 
-            // Report and return total I as a percentage
-            total_Ipct[subset_index] = 100.0*total_I[subset_index]/total_entropy;
-            //s += boost::str(boost::format("\ntotal I          = %.5f\ntotal I (%% max.) = %.5f\n") % total_I % total_Ipct);
+            Ipct[subset_index] = 100.0*I[subset_index]/total_entropy;
+            sum_Ipct += Ipct[subset_index];
             }
         }
 
     w[num_subsets] = clade_denom[num_subsets]/total_trees;
+
     I[num_subsets] = w[num_subsets]*(clade_Hp[num_subsets] - clade_H[num_subsets]);
+    total_I[num_subsets] += I[num_subsets];
+
     Ipct[num_subsets] = 100.0*I[num_subsets]/total_entropy;
 
     // Compute clade-specific D
     double D = (sum_Ipct/num_subsets) - Ipct[num_subsets];
     total_D += D;
 
-    total_I[num_subsets] += I[num_subsets];
     if (I[num_subsets] > 0.0)
         {
         s += boost::str(boost::format("\nClade %s\n") % clade.createPatternRepresentation());
@@ -702,11 +704,35 @@ inline double TreeManip<T>::estimateMergedInfo(std::string & s, std::vector<unsi
             }
         }
 
-    // Report and return total I as a percentage
-    total_Ipct[num_subsets] = 100.0*total_I[num_subsets]/total_entropy;
-    s += boost::str(boost::format("\ntotal I          = %.5f\ntotal I (%% max.) = %.5f\ntotal D          = %.5f\n") % total_I[num_subsets] % total_Ipct[num_subsets] % total_D);
+    const char indiv_summary[]  = "%20s %12.5f %12.5f %12s\n";
+    const char merged_summary[] = "%20s %12.5f %12.5f %12.5f\n";
+    s += std::string("\nTotals\n");
+    s += boost::str(boost::format("%20s %12s %12s %12s\n")
+        % "treefile"
+        % "I"
+        % "Ipct"
+        % "D");
+    for (unsigned subset_index = 0; subset_index < num_subsets; ++subset_index)
+        {
+        s += boost::str(boost::format(indiv_summary)
+            % treefile_names[subset_index]
+            % total_I[subset_index]
+            % (100.0*total_I[subset_index]/total_entropy)
+            % "---");
+        }
+    if (num_subsets > 1)
+        {
+        s += boost::str(boost::format(merged_summary)
+            % "merged"
+            % total_I[num_subsets]
+            % (100.0*total_I[num_subsets]/total_entropy)
+            % total_D);
+        }
 
-    return total_Ipct[num_subsets];
+    //            treefile        I         Ipct         D
+    //       trees3prime.t  1.76422     65.14748       ---
+    //       trees5prime.t  1.90976     70.52154       ---
+    //              merged  1.25055     46.17921   21.6553
     }
 
 template <class T>
