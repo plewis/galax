@@ -49,7 +49,7 @@ void processCommandLineOptions(int argc, const char * argv[])
         to_pass_further = collect_unrecognized(parsed.options, boost::program_options::include_positional);
         boost::program_options::store(parsed, vm);
         }
-    catch(boost::program_options::reading_file & x)
+    catch(boost::program_options::reading_file &)
         {
         std::cout << "Note: configuration file (galax.conf) not found" << std::endl;
         }

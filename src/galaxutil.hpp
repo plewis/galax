@@ -44,7 +44,7 @@ inline double lognrooted(unsigned y)
     double fy = (double)y;
     double log_num_rooted_trees = 0.0;
     if (y > 2)
-        log_num_rooted_trees = logfactorial(2.0*fy - 3.0) - (fy - 2.0)*log(2.0) - logfactorial(fy - 2);
+        log_num_rooted_trees = logfactorial(2*y - 3) - (fy - 2.0)*log(2.0) - logfactorial(y - 2);
     return log_num_rooted_trees;
     }
 
@@ -116,7 +116,8 @@ inline void getFileContents(std::string & file_contents, std::string filename)
     if (f.good())
         {
         f.seekg(0, std::ios::end);
-        long unsigned nbytes = f.tellg();
+        //long unsigned nbytes = f.tellg();
+		std::streamoff nbytes = f.tellg();
         if (nbytes == 0)
             throw XGalax(boost::str(boost::format("File specified (%s) is empty") % filename));
         f.seekg(0, std::ios::beg);

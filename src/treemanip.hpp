@@ -71,7 +71,7 @@ class TreeManip
 
 
 template<class T>
-const unsigned TreeManip<T>::ALLSUBSETS((unsigned)-1);
+const unsigned TreeManip<T>::ALLSUBSETS = (unsigned)-1;
 
 template <class T>
 inline std::string TreeManip<T>::debugDescribeNode(T * node) const
