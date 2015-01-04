@@ -20,6 +20,7 @@ using namespace galax;
 std::string program_name = "galax";
 unsigned major_version = 1;
 unsigned minor_version = 1;
+unsigned bugfix_version = 1;
 std::string tree_file_name = "";
 std::string list_file_name = "";
 std::string output_file_name = "output-galax";
@@ -80,7 +81,7 @@ void processCommandLineOptions(int argc, const char * argv[])
     // If user used --version on command line, output version and quit
     if (vm.count("version"))
         {
-        std::cout << boost::str(boost::format("This is %s version %d.%d") % program_name % major_version % minor_version) << std::endl;
+        std::cout << boost::str(boost::format("This is %s version %d.%d.%d") % program_name % major_version % minor_version % bugfix_version) << std::endl;
         std::exit(1);
         }
 

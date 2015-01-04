@@ -19,6 +19,7 @@
 #include <numeric>      // accumulate
 #include <stdlib.h>     // atoi
 #include "split.hpp"
+#include "cladeinfo.hpp"
 #include "node.hpp"
 #include "tree.hpp"
 #include "galaxutil.hpp"
@@ -449,6 +450,9 @@ inline void TreeManip<T>::estimateMergedInfo(std::string & s, std::vector<unsign
 
     Split clade;
 
+    std::vector<CladeInfo> clade_merged_info;
+    std::vector<CladeInfo> clade_diff;
+
     std::vector<double> clade_H(num_subsets+1, 0.0);
     std::vector<double> clade_Hp(num_subsets+1, 0.0);
     std::vector<double> clade_denom(num_subsets+1, 0.0);
@@ -487,12 +491,9 @@ inline void TreeManip<T>::estimateMergedInfo(std::string & s, std::vector<unsign
             unsigned subset_index = 0;
             BOOST_FOREACH(double subset_count, count)
                 {
-                if (subset_count > 0)
-                    {
-                    clade_Hp[subset_index] = lognrooted(clade.countOnBits());
-                    clade_H[subset_index] = 0.0;
-                    clade_denom[subset_index] = subset_count;
-                    }
+                clade_Hp[subset_index] = lognrooted(clade.countOnBits());
+                clade_H[subset_index] = 0.0;
+                clade_denom[subset_index] = subset_count;
                 ++subset_index;
                 }
 
@@ -506,6 +507,9 @@ inline void TreeManip<T>::estimateMergedInfo(std::string & s, std::vector<unsign
             if (v[0] == clade)
                 {
                 // Conditional clade entry whose parent is clade
+                assert(v.size() == 3); // parent clade, left clade, right clade
+
+                // Individual subsets
                 unsigned subset_index = 0;
                 BOOST_FOREACH(double subset_count, count)
                     {
@@ -513,7 +517,6 @@ inline void TreeManip<T>::estimateMergedInfo(std::string & s, std::vector<unsign
                         {
                         double p = subset_count/clade_denom[subset_index];
                         clade_H[subset_index] -= p*log(p);
-                        assert(v.size() == 3); // parent clade, left clade, right clade
                         clade_Hp[subset_index] -= p*(lognrooted((v[1].countOnBits())) + lognrooted(v[2].countOnBits()));
                         }
                     ++subset_index;
@@ -522,7 +525,6 @@ inline void TreeManip<T>::estimateMergedInfo(std::string & s, std::vector<unsign
                 // Merged case
                 double p = sum_counts/clade_denom[num_subsets];
                 clade_H[num_subsets] -= p*log(p);
-                assert(v.size() == 3); // parent clade, left clade, right clade
                 clade_Hp[num_subsets] -= p*(lognrooted((v[1].countOnBits())) + lognrooted(v[2].countOnBits()));
                 }
             else
@@ -535,23 +537,19 @@ inline void TreeManip<T>::estimateMergedInfo(std::string & s, std::vector<unsign
                 double sum_Ipct = 0.0;
                 BOOST_FOREACH(double subset_count, count)
                     {
-                    if (subset_count > 0)
-                        {
-                        // Compute I for previous clade
-                        w[subset_index] = clade_denom[subset_index]/tree_counts[subset_index]; // marginal posterior clade probability
+                    // Compute I for previous clade
+                    w[subset_index] = clade_denom[subset_index]/tree_counts[subset_index]; // marginal posterior clade probability
 
-                        I[subset_index] = w[subset_index]*(clade_Hp[subset_index] - clade_H[subset_index]);
-                        total_I[subset_index] += I[subset_index];
+                    I[subset_index] = w[subset_index]*(clade_Hp[subset_index] - clade_H[subset_index]);
+                    total_I[subset_index] += I[subset_index];
 
-                        Ipct[subset_index] = 100.0*I[subset_index]/total_entropy;
-                        sum_Ipct += Ipct[subset_index];
+                    Ipct[subset_index] = 100.0*I[subset_index]/total_entropy;
+                    sum_Ipct += Ipct[subset_index];
 
-                        // Initialize data for next clade
-                        clade_Hp[subset_index] = lognrooted(clade.countOnBits());
-                        clade_H[subset_index] = 0.0;
-                        assert(v.size() == 1);
-                        clade_denom[subset_index] = subset_count;
-                        }
+                    // Initialize data for next clade
+                    clade_Hp[subset_index] = lognrooted(clade.countOnBits());
+                    clade_H[subset_index] = 0.0;
+                    clade_denom[subset_index] = subset_count;
 
                     ++subset_index;
                     }
@@ -607,24 +605,20 @@ inline void TreeManip<T>::estimateMergedInfo(std::string & s, std::vector<unsign
                             % I[num_subsets]
                             % Ipct[num_subsets]
                             % D);
+                        clade_merged_info.push_back(CladeInfo(clade, Ipct[num_subsets]));
+                        clade_diff.push_back(CladeInfo(clade, D));
                         }
                     }
 
                 // Initialize data for next clade
                 clade = v[0];
 
-                //std::string clade_pattern_representation = clade.createPatternRepresentation();
-                //s += boost::str(boost::format("\nClade %s\n") % clade_pattern_representation);
-
                 subset_index = 0;
                 BOOST_FOREACH(double subset_count, count)
                     {
-                    if (subset_count > 0)
-                        {
-                        clade_Hp[subset_index] = lognrooted(clade.countOnBits());
-                        clade_H[subset_index] = 0.0;
-                        clade_denom[subset_index] = subset_count;
-                        }
+                    clade_Hp[subset_index] = lognrooted(clade.countOnBits());
+                    clade_H[subset_index] = 0.0;
+                    clade_denom[subset_index] = subset_count;
                     ++subset_index;
                     }
 
@@ -701,9 +695,12 @@ inline void TreeManip<T>::estimateMergedInfo(std::string & s, std::vector<unsign
                 % I[num_subsets]
                 % Ipct[num_subsets]
                 % D);
+                clade_merged_info.push_back(CladeInfo(clade, Ipct[num_subsets]));
+                clade_diff.push_back(CladeInfo(clade, D));
             }
         }
 
+    // Report totals for each subset
     const char indiv_summary[]  = "%20s %12.5f %12.5f %12s\n";
     const char merged_summary[] = "%20s %12.5f %12.5f %12.5f\n";
     s += std::string("\nTotals\n");
@@ -720,8 +717,10 @@ inline void TreeManip<T>::estimateMergedInfo(std::string & s, std::vector<unsign
             % (100.0*total_I[subset_index]/total_entropy)
             % "---");
         }
+    double totalIpct = 0.0;
     if (num_subsets > 1)
         {
+        totalIpct = (100.0*total_I[num_subsets]/total_entropy);
         s += boost::str(boost::format(merged_summary)
             % "merged"
             % total_I[num_subsets]
@@ -729,10 +728,53 @@ inline void TreeManip<T>::estimateMergedInfo(std::string & s, std::vector<unsign
             % total_D);
         }
 
-    //            treefile        I         Ipct         D
-    //       trees3prime.t  1.76422     65.14748       ---
-    //       trees5prime.t  1.90976     70.52154       ---
-    //              merged  1.25055     46.17921   21.6553
+    // Report merged info for each clade sorted from highest to lowest
+    std::sort(clade_merged_info.begin(), clade_merged_info.end(), std::greater<CladeInfo>());
+    const char clade_summary[]  = "%12.5f %12.5f %12.5f %s\n";
+    s += std::string("\nClades sorted by merged info (top 95% shown):\n");
+    s += boost::str(boost::format("%12s %12s %12s %s\n")
+        % "I"
+        % "%"
+        % "cum. %"
+        % "clade");
+    double cumpct = 0.0;
+    BOOST_FOREACH(CladeInfo & c, clade_merged_info)
+        {
+        double v = c._value;
+        double pct = 100.0*v/totalIpct;
+        cumpct += pct;
+        if (cumpct > 95)
+            break;
+        s += boost::str(boost::format(clade_summary)
+            % v
+            % pct
+            % cumpct
+            % c._split.createPatternRepresentation());
+        }
+
+    // Report diff for each clade sorted from highest to lowest
+    std::sort(clade_diff.begin(), clade_diff.end(), std::greater<CladeInfo>());
+    s += std::string("\nClades sorted by D (top 95% shown):\n");
+    s += boost::str(boost::format("%12s %12s %12s %s\n")
+        % "D"
+        % "%"
+        % "cum. %"
+        % "clade");
+    cumpct = 0.0;
+    BOOST_FOREACH(CladeInfo & c, clade_diff)
+        {
+        double v = c._value;
+        double pct = 100.0*v/total_D;
+        cumpct += pct;
+        if (cumpct > 95)
+            break;
+        s += boost::str(boost::format(clade_summary)
+            % v
+            % pct
+            % cumpct
+            % c._split.createPatternRepresentation());
+        }
+
     }
 
 template <class T>

@@ -1,4 +1,4 @@
-AC_INIT([galax], [1.1], [bug-automake@gnu.org])
+AC_INIT([galax], [1.1.1], [bug-automake@gnu.org])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign])
 LT_INIT
 AC_CONFIG_MACRO_DIR([m4])
