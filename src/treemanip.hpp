@@ -19,9 +19,9 @@
 #include <numeric>      // accumulate
 #include <stdlib.h>     // atoi
 #include "split.hpp"
-#include "cladeinfo.hpp"
 #include "node.hpp"
 #include "tree.hpp"
+#include "galaxinfo.hpp"
 #include "galaxutil.hpp"
 #include "xgalax.hpp"
 
@@ -450,8 +450,7 @@ inline void TreeManip<T>::estimateMergedInfo(std::string & s, std::vector<unsign
 
     Split clade;
 
-    std::vector<CladeInfo> clade_merged_info;
-    std::vector<CladeInfo> clade_diff;
+    std::vector<GalaxInfo> clade_info;
 
     std::vector<double> clade_H(num_subsets+1, 0.0);
     std::vector<double> clade_Hp(num_subsets+1, 0.0);
@@ -605,8 +604,10 @@ inline void TreeManip<T>::estimateMergedInfo(std::string & s, std::vector<unsign
                             % I[num_subsets]
                             % Ipct[num_subsets]
                             % D);
-                        clade_merged_info.push_back(CladeInfo(clade, Ipct[num_subsets]));
-                        clade_diff.push_back(CladeInfo(clade, D));
+                        std::vector<double> tmp;
+                        tmp.push_back(Ipct[num_subsets]);
+                        tmp.push_back(D);
+                        clade_info.push_back(GalaxInfo(clade.createPatternRepresentation(), tmp));
                         }
                     }
 
@@ -695,12 +696,24 @@ inline void TreeManip<T>::estimateMergedInfo(std::string & s, std::vector<unsign
                 % I[num_subsets]
                 % Ipct[num_subsets]
                 % D);
-                clade_merged_info.push_back(CladeInfo(clade, Ipct[num_subsets]));
-                clade_diff.push_back(CladeInfo(clade, D));
+                std::vector<double> tmp;
+                tmp.push_back(Ipct[num_subsets]);
+                tmp.push_back(D);
+                clade_info.push_back(GalaxInfo(clade.createPatternRepresentation(), tmp));
             }
         }
 
     // Report totals for each subset
+    std::vector<GalaxInfo> subset_info;
+    for (unsigned subset_index = 0; subset_index < num_subsets; ++subset_index)
+        {
+        std::vector<double> tmp;
+        tmp.push_back(total_I[subset_index]);
+        subset_info.push_back(GalaxInfo(treefile_names[subset_index], tmp));
+        }
+    GalaxInfo::_sortby_index = 0;
+    std::sort(subset_info.begin(), subset_info.end(), std::greater<GalaxInfo>());
+
     const char indiv_summary[]  = "%20s %12.5f %12.5f %12s\n";
     const char merged_summary[] = "%20s %12.5f %12.5f %12.5f\n";
     s += std::string("\nTotals\n");
@@ -709,12 +722,14 @@ inline void TreeManip<T>::estimateMergedInfo(std::string & s, std::vector<unsign
         % "I"
         % "Ipct"
         % "D");
-    for (unsigned subset_index = 0; subset_index < num_subsets; ++subset_index)
+    BOOST_FOREACH(GalaxInfo & c, subset_info)
         {
+        double info = c._value[0];
+        double pct = 100.0*info/total_entropy;
         s += boost::str(boost::format(indiv_summary)
-            % treefile_names[subset_index]
-            % total_I[subset_index]
-            % (100.0*total_I[subset_index]/total_entropy)
+            % c._name
+            % info
+            % pct
             % "---");
         }
     double totalIpct = 0.0;
@@ -729,50 +744,58 @@ inline void TreeManip<T>::estimateMergedInfo(std::string & s, std::vector<unsign
         }
 
     // Report merged info for each clade sorted from highest to lowest
-    std::sort(clade_merged_info.begin(), clade_merged_info.end(), std::greater<CladeInfo>());
-    const char clade_summary[]  = "%12.5f %12.5f %12.5f %s\n";
+    GalaxInfo::_sortby_index = 0;
+    std::sort(clade_info.begin(), clade_info.end(), std::greater<GalaxInfo>());
+    const char clade_summary[]  = "%12.5f %12.5f %12.5f %12.5f %s\n";
     s += std::string("\nClades sorted by merged info (top 95% shown):\n");
-    s += boost::str(boost::format("%12s %12s %12s %s\n")
+    s += boost::str(boost::format("%12s %12s %12s %12s %s\n")
         % "I"
         % "%"
         % "cum. %"
+        % "D"
         % "clade");
     double cumpct = 0.0;
-    BOOST_FOREACH(CladeInfo & c, clade_merged_info)
+    BOOST_FOREACH(GalaxInfo & c, clade_info)
         {
-        double v = c._value;
-        double pct = 100.0*v/totalIpct;
+        double info = c._value[0];
+        double diff = c._value[1];
+        double pct = 100.0*info/totalIpct;
         cumpct += pct;
         if (cumpct > 95)
             break;
         s += boost::str(boost::format(clade_summary)
-            % v
+            % info
             % pct
             % cumpct
-            % c._split.createPatternRepresentation());
+            % diff
+            % c._name);
         }
 
     // Report diff for each clade sorted from highest to lowest
-    std::sort(clade_diff.begin(), clade_diff.end(), std::greater<CladeInfo>());
+    GalaxInfo::_sortby_index = 1;
+    std::sort(clade_info.begin(), clade_info.end(), std::greater<GalaxInfo>());
     s += std::string("\nClades sorted by D (top 95% shown):\n");
-    s += boost::str(boost::format("%12s %12s %12s %s\n")
+    s += boost::str(boost::format("%12s %12s %12s %12s %s\n")
         % "D"
         % "%"
         % "cum. %"
+        % "Ipct"
         % "clade");
     cumpct = 0.0;
-    BOOST_FOREACH(CladeInfo & c, clade_diff)
+    BOOST_FOREACH(GalaxInfo & c, clade_info)
         {
-        double v = c._value;
-        double pct = 100.0*v/total_D;
+        double info = c._value[0];
+        double diff = c._value[1];
+        double pct = 100.0*diff/total_D;
         cumpct += pct;
         if (cumpct > 95)
             break;
         s += boost::str(boost::format(clade_summary)
-            % v
+            % diff
             % pct
             % cumpct
-            % c._split.createPatternRepresentation());
+            % info
+            % c._name);
         }
 
     }

@@ -13,10 +13,12 @@
 #include <boost/program_options.hpp>
 #include <boost/format.hpp>
 #include <boost/regex.hpp>
+#include "galaxinfo.hpp"
 #include "galax.hpp"
 
 using namespace galax;
 
+unsigned GalaxInfo::_sortby_index = 0;
 std::string program_name = "galax";
 unsigned major_version = 1;
 unsigned minor_version = 1;
