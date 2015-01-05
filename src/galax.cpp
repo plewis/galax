@@ -96,35 +96,42 @@ void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, std::string & infos
 
 void Galax::run(std::string treefname, std::string listfname, unsigned skip, bool rooted)
     {
-    _treefile_names.clear();
-    if (listfname.size() > 0)
-        _treefile_names = getTreeFileList(listfname);
-    else
-        _treefile_names.push_back(treefname);
+	try
+		{
+        _treefile_names.clear();
+        if (listfname.size() > 0)
+            _treefile_names = getTreeFileList(listfname);
+        else
+            _treefile_names.push_back(treefname);
 
-    unsigned ntreefiles = (unsigned)_treefile_names.size();
-    if (ntreefiles == 1)
-        _outf << "Read 1 tree file name from list file " << listfname << std::endl;
-    else
-        _outf << "Read " << ntreefiles << " tree file names from list file " << listfname << std::endl;
+        unsigned ntreefiles = (unsigned)_treefile_names.size();
+        if (ntreefiles == 1)
+            _outf << "Read 1 tree file name from list file " << listfname << std::endl;
+        else
+            _outf << "Read " << ntreefiles << " tree file names from list file " << listfname << std::endl;
 
-    unsigned n = (unsigned)_treefile_names.size();
-    TreeManip<Node>::TreeManipShPtr tm(new TreeManip<Node>());
+        unsigned n = (unsigned)_treefile_names.size();
+        TreeManip<Node>::TreeManipShPtr tm(new TreeManip<Node>());
 
-    unsigned subset_index = 0;
-    for (std::vector<std::string>::const_iterator it = _treefile_names.begin(); it != _treefile_names.end(); ++it)
-        {
-        std::string treefname = *it;
+        unsigned subset_index = 0;
+        for (std::vector<std::string>::const_iterator it = _treefile_names.begin(); it != _treefile_names.end(); ++it)
+            {
+            std::string treefname = *it;
 
-        getTreesFromFile(treefname, skip);
-        processTrees(tm, rooted, subset_index, n);
+            getTreesFromFile(treefname, skip);
+            processTrees(tm, rooted, subset_index, n);
 
-        ++subset_index;
+            ++subset_index;
+            }
+
+        std::string infostr;
+        estimateInfo(tm, infostr);
+        _outf << "\n" << infostr;
+
+        _outf << "\nRequired " << _total_seconds << " total seconds" << std::endl;
         }
-
-    std::string infostr;
-    estimateInfo(tm, infostr);
-    _outf << "\n" << infostr;
-
-    _outf << "\nRequired " << _total_seconds << " total seconds" << std::endl;
+	catch(XGalax x)
+		{
+		std::cerr << "Exception: " << x.what() << std::endl;
+		}
     }

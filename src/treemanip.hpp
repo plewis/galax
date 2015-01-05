@@ -15,6 +15,7 @@
 #include <boost/lambda/lambda.hpp>
 #include <boost/lambda/bind.hpp>
 #include <boost/foreach.hpp>
+#include <boost/range/iterator_range_core.hpp>
 #include <set>
 #include <numeric>      // accumulate
 #include <stdlib.h>     // atoi
@@ -40,6 +41,9 @@ class TreeManip
                 
         T *                             rerootAt(int node_index);
         void                            buildFromNewick(const std::string newick, bool rooted = false);
+        void                            buildFromSplitVector(const std::vector<Split> & splits, bool rooted);
+        void                            buildStarTree(unsigned ntips, bool rooted);
+		std::string                     makeNewick(unsigned ndecimals) const;
 
         void                            addToCCDMap(unsigned subset_index, unsigned num_subsets);
         void                            showCCDMap(unsigned subset_index);
@@ -223,7 +227,7 @@ inline void TreeManip<T>::refreshPreorder(T * root_node)
             {
             // nd is an internal node
             
-            // node numbers for internal nodes are negative integers
+            // node numbers for internal nodes begin with _tree->_nleaves
             nd->_number = curr_internal++;
 
             // update parent's split
@@ -607,6 +611,7 @@ inline void TreeManip<T>::estimateMergedInfo(std::string & s, std::vector<unsign
                         std::vector<double> tmp;
                         tmp.push_back(Ipct[num_subsets]);
                         tmp.push_back(D);
+                        tmp.push_back(w[num_subsets]);
                         clade_info.push_back(GalaxInfo(clade.createPatternRepresentation(), tmp));
                         }
                     }
@@ -699,6 +704,7 @@ inline void TreeManip<T>::estimateMergedInfo(std::string & s, std::vector<unsign
                 std::vector<double> tmp;
                 tmp.push_back(Ipct[num_subsets]);
                 tmp.push_back(D);
+                tmp.push_back(w[num_subsets]);
                 clade_info.push_back(GalaxInfo(clade.createPatternRepresentation(), tmp));
             }
         }
@@ -746,20 +752,22 @@ inline void TreeManip<T>::estimateMergedInfo(std::string & s, std::vector<unsign
     // Report merged info for each clade sorted from highest to lowest
     GalaxInfo::_sortby_index = 0;
     std::sort(clade_info.begin(), clade_info.end(), std::greater<GalaxInfo>());
-    const char clade_summary[]  = "%12.5f %12.5f %12.5f %12.5f %s\n";
+    const char clade_summary[]  = "%12.5f %12.5f %12.5f %12.5f %12.5f %s\n";
     s += std::string("\nClades sorted by merged info (top 95% shown):\n");
-    s += boost::str(boost::format("%12s %12s %12s %12s %s\n")
+    s += boost::str(boost::format("%12s %12s %12s %12s %12s %s\n")
         % "I"
         % "%"
         % "cum. %"
         % "D"
+        % "w"
         % "clade");
     double cumpct = 0.0;
     BOOST_FOREACH(GalaxInfo & c, clade_info)
         {
         double info = c._value[0];
         double diff = c._value[1];
-        double pct = 100.0*info/totalIpct;
+        double w    = c._value[2];
+        double pct  = 100.0*info/totalIpct;
         cumpct += pct;
         if (cumpct > 95)
             break;
@@ -768,6 +776,7 @@ inline void TreeManip<T>::estimateMergedInfo(std::string & s, std::vector<unsign
             % pct
             % cumpct
             % diff
+            % w
             % c._name);
         }
 
@@ -775,18 +784,20 @@ inline void TreeManip<T>::estimateMergedInfo(std::string & s, std::vector<unsign
     GalaxInfo::_sortby_index = 1;
     std::sort(clade_info.begin(), clade_info.end(), std::greater<GalaxInfo>());
     s += std::string("\nClades sorted by D (top 95% shown):\n");
-    s += boost::str(boost::format("%12s %12s %12s %12s %s\n")
+    s += boost::str(boost::format("%12s %12s %12s %12s %12s %s\n")
         % "D"
         % "%"
         % "cum. %"
         % "Ipct"
+        % "w"
         % "clade");
     cumpct = 0.0;
     BOOST_FOREACH(GalaxInfo & c, clade_info)
         {
         double info = c._value[0];
         double diff = c._value[1];
-        double pct = 100.0*diff/total_D;
+        double w    = c._value[2];
+        double pct  = 100.0*diff/total_D;
         cumpct += pct;
         if (cumpct > 95)
             break;
@@ -795,9 +806,46 @@ inline void TreeManip<T>::estimateMergedInfo(std::string & s, std::vector<unsign
             % pct
             % cumpct
             % info
+            % w
             % c._name);
         }
 
+    // Report clade posterior for each clade sorted from highest to lowest
+    GalaxInfo::_sortby_index = 2;
+    std::sort(clade_info.begin(), clade_info.end(), std::greater<GalaxInfo>());
+    s += std::string("\nClades sorted by merged clade posterior (w) (only those >= 50% shown):\n");
+    s += boost::str(boost::format("%12s %12s %12s %s\n")
+        % "w"
+        % "Ipct"
+        % "D"
+        % "clade");
+    cumpct = 0.0;
+    std::vector<Split> majrule_splits;
+    BOOST_FOREACH(GalaxInfo & c, clade_info)
+        {
+        double info = c._value[0];
+        double diff = c._value[1];
+        double w    = c._value[2];
+
+        if (w < 0.5)
+            break;
+
+        // add split to vector used to construct majority-rule tree for merged case
+        Split split;
+        split.createFromPattern(c._name);
+        majrule_splits.push_back(split);
+
+        s += boost::str(boost::format("%12.5f %12.5f %12.5f %s\n")
+            % w
+            % info
+            % diff
+            % c._name);
+        }
+
+    buildFromSplitVector(majrule_splits, false);
+    s += "\nMajority-rule consensus tree for merged trees = ";
+    s += makeNewick(5);
+    s += "\n";
     }
 
 template <class T>
@@ -1122,6 +1170,233 @@ inline void TreeManip<T>::buildFromNewick(const std::string newick, bool rooted)
 		throw x;
 		}
 
+	}
+
+template <class T>
+inline void TreeManip<T>::buildStarTree(unsigned ntips, bool rooted)
+	{
+	try
+		{
+        if (ntips < 3)
+            throw XGalax(boost::str(boost::format("TreeManip<T>::buildStarTree expected splits to contain at least 3 taxa, but found %d instead") % ntips));
+
+        _tree->clear();
+
+        unsigned max_nodes = 2*ntips - (rooted ? 0 : 2);
+        _tree->_nodes.resize(max_nodes);
+        _tree->_is_rooted = rooted;
+        _tree->_preorder.assign(_tree->_preorder.size(), 0);
+
+        unsigned curr_node_index = 0;
+        unsigned curr_tip_number = 0;
+        T * root = &_tree->_nodes[curr_node_index];
+        root->_edge_length = 1.0;
+        if (!rooted)
+            root->_number = curr_tip_number++;
+
+        T * hub = &_tree->_nodes[++curr_node_index];
+        root->_left_child = hub;
+        hub->_parent = root;
+        hub->_edge_length = 1.0;
+        hub->_number = ntips;
+
+        for (unsigned i = (rooted ? 0 : 1); i < ntips; ++i)
+            {
+            T * nd = &_tree->_nodes[++curr_node_index];
+            nd->_right_sib = hub->_left_child;
+            nd->_parent = hub;
+            nd->_edge_length = 1.0;
+            nd->_number = curr_tip_number++;
+            hub->_left_child = nd;
+            }
+
+        assert(curr_tip_number == ntips);
+
+        refreshPreorder(root);
+        }
+	catch(XGalax x)
+		{
+		clear();
+		throw x;
+		}
+	}
+
+template <class T>
+inline void TreeManip<T>::buildFromSplitVector(const std::vector<Split> & split_vect, bool rooted)
+    {
+	try
+		{
+        // Start with clean slate in case _tree already exists
+        _tree.reset(new Tree<T>());
+        _tree->_nleaves = split_vect[0].getNTaxa();
+        if (_tree->_nleaves == 0)
+            throw XGalax("Expecting splits in supplied split_vect to have at least 1 taxon");
+        unsigned max_nodes = 2*_tree->_nleaves - (rooted ? 0 : 2);
+        _tree->_nodes.resize(max_nodes);
+
+        // Make a copy of split_vect because we will need to sort splits
+        std::vector<Split> splits(split_vect.begin(), split_vect.end());
+
+        // Assume splits are already correctly polarized (i.e. if unrooted, tip that will serve as root
+        // is unset in all splits)
+        std::vector<Split>::iterator sit = splits.begin();
+
+        // Assume splits have at least 3 taxa
+        unsigned ntips = sit->getNTaxa();
+        if (ntips < 3)
+            throw XGalax(boost::str(boost::format("TreeManip<T>::buildFromSplitVector expected splits to contain at least 3 taxa, but found %d instead") % ntips));
+
+        // Sort the split objects from smallest to largest so that more inclusive splits will
+        // follow the less inclusive splits. For example,
+        // ---**-*- less inclusive split
+        // ---***** more inclusive split
+        std::sort(splits.begin(), splits.end());
+
+        // Build a star tree to begin with
+        buildStarTree(ntips, rooted);
+
+        // Star tree used ntips + 1 nodes if unrooted, ntips + 2 nodes if rooted
+        unsigned curr_node_index = ntips + (rooted ? 1 : 0);
+
+        T * subroot = _tree->_preorder[0];
+        T * root = subroot->_parent;
+
+        // Loop over all splits, pulling out taxa specified under a new ancestral node for each
+        unsigned tmp = 0;
+        BOOST_FOREACH(Split & s, splits)
+            {
+            // Create a new node to hold the taxa in the current split
+            T * anc = &_tree->_nodes[++curr_node_index];
+            anc->_edge_length = 1.0;
+
+            refreshPreorder(root);
+
+            if (subroot->_split.subsumedIn(s))
+                continue;
+
+            // Detach nodes in s from tree and add each to anc
+            for (typename std::vector<T *>::iterator nit = _tree->_preorder.begin(); nit != _tree->_preorder.end();)
+                {
+                T * nd = *nit;
+                Split & ss = nd->_split;
+                T * next = nd->_right_sib;
+                if (ss.subsumedIn(s))
+                    {
+                    // prepare tree for nd removal
+                    if (nd == nd->_parent->_left_child)
+                        nd->_parent->_left_child = nd->_right_sib;
+                    else
+                        {
+                        T * prev_sib = nd->_parent->_left_child;
+                        while (prev_sib->_right_sib != nd)
+                            prev_sib = prev_sib->_right_sib;
+                        prev_sib->_right_sib = nd->_right_sib;
+                        }
+
+                    // move nd to anc
+                    nd->_parent = anc;
+                    nd->_right_sib = anc->_left_child;
+                    anc->_left_child = nd;
+
+                    // skip ahead and continue with nd's right sibling
+                    while (nit != _tree->_preorder.end() && (*nit) != next)
+                        ++nit;
+                    }
+                else
+                    ++nit;
+                }
+
+            // Add anc to subroot (only descendant of tip serving as the root)
+            anc->_right_sib = subroot->_left_child;
+            anc->_parent = subroot;
+            subroot->_left_child = anc;
+
+            ++tmp;
+            }
+        }
+	catch(XGalax x)
+		{
+		clear();
+		throw x;
+		}
+	}
+
+template <class T>
+inline std::string TreeManip<T>::makeNewick(unsigned ndecimals) const
+    {
+	bool rooted = _tree->_is_rooted;
+    boost::format edgelen_format(boost::str(boost::format(":%%.%df") % ndecimals));
+
+    std::string s = "(";
+	unsigned open_parens = 1;
+
+	// Start with root node, which may actually represent an extant tip (unrooted trees are
+	// rooted at one of the tips)
+    typename std::vector<T *>::const_iterator nit = _tree->_preorder.begin();
+	const T * nd = *nit;    // nd points to subroot node (node just above root)
+
+	if (!rooted)
+		{
+        // In this case (unrooted tree), root node is actually a tip
+        // output node number (plus 1) as the node name
+        s += boost::str(boost::format("%d") % (nd->_parent->_number + 1));
+
+        // In an unrooted tree, where the root node is actually an upside-down extant tip,
+        // the root node's edge length is actually held by its only child
+        s += boost::str(edgelen_format % nd->_edge_length);
+		}
+
+    if (!rooted)
+	    s += ",";
+
+	// Now visit all other nodes
+	for (++nit; nit != _tree->_preorder.end(); ++nit)
+		{
+        nd = *nit;
+
+		if (nd->_left_child)
+			{
+			// nd is internal
+			s += "(";
+			++open_parens;
+			}
+        else
+            {
+			// nd is a leaf
+			// Output tip node number plus 1, then the edge length
+            s += boost::str(boost::format("%d") % (nd->_number + 1));
+            s += boost::str(edgelen_format % nd->_edge_length);
+
+			if (nd->_right_sib)
+                {
+				s += ",";
+                }
+			else
+				{
+				// Descend toward root until we find an ancestor with a right sibling,
+				// outputting edge lengths as we go
+				const T * anc = nd;
+				while (anc->_parent->_parent && !anc->_right_sib)
+					{
+					anc = anc->_parent;
+					assert(anc);
+
+                    s += ")";
+                    s += boost::str(edgelen_format % anc->_edge_length);
+                    assert(open_parens > 0);
+                    --open_parens;
+					}
+                if (anc->_parent->_parent)
+                    {
+                    s += ",";
+                    }
+                else
+                    break;
+				}
+			}
+		}
+
+	return s;
 	}
 }
 
