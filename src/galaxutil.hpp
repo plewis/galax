@@ -51,7 +51,7 @@ inline double lognrooted(unsigned y)
 // See item 24, p. 110, in Meyers, Scott. 2001. Effective STL: 50 specific ways to improve your
 // use of the Standard Template Library. Addison-Wesley, Boston.
 template< typename MapType, typename KeyArgType, typename ValueArgType >
-typename MapType::iterator efficientAddOrUpdate(MapType & m, const KeyArgType & k, const ValueArgType & v)
+typename MapType::iterator efficientAddOrCheck(MapType & m, const KeyArgType & k, const ValueArgType & v)
     {
     // Find where k is, or should be
     typename MapType::iterator lb = m.lower_bound(k);
@@ -59,9 +59,11 @@ typename MapType::iterator efficientAddOrUpdate(MapType & m, const KeyArgType & 
     // If lb points to a pair whose key is equivalent to k,
     if (lb != m.end() && !(m.key_comp()(k, lb->first)))
         {
-        // update the pair's value and return an iterator to that pair,
-        lb->second = v;
-        return lb;
+        // check the pair's value and return m.end() if v is not equal to currently-store value or lb if they are the same
+        if (lb->second == v)
+            return lb;
+        else
+            return m.end();
         }
     else
         {
@@ -148,6 +150,8 @@ inline void extractAllWhitespaceDelimitedStrings(std::vector<std::string> & rece
 
 inline void parseTranslate(std::map< unsigned, std::string > & translate_map, const std::string & file_contents)
     {
+    // Will either add to an empty translate_map or check values if translate_map has been created previously
+
     // First, separate out the contents of the translate statement from the rest of the tree file
     std::string translate_contents;
     boost::regex pattern("[Tt]ranslate(.+?);");
@@ -181,7 +185,10 @@ inline void parseTranslate(std::map< unsigned, std::string > & translate_map, co
             {
             throw XGalax("Could not interpret taxon index in translate statement as a number");
             }
-        translate_map[taxon_index] = what[2].str();
+
+        // efficientAddOrCheck returns valid iterator on first insertion or if identical association already previously made
+        if (efficientAddOrCheck(translate_map, taxon_index, what[2].str()) == translate_map.end())
+            throw XGalax(boost::str(boost::format("Taxon name (%s) does not match name already associated (%s) with taxon %d") % what[2].str() % translate_map[taxon_index] % taxon_index));
         }
     }
 
