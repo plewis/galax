@@ -21,6 +21,18 @@
 namespace galax
 {
 
+// From http://stackoverflow.com/questions/6097927/is-there-a-way-to-implement-analog-of-pythons-separator-join-in-c
+template <typename Iter>
+std::string join(Iter curr, Iter stop, std::string const & separator)
+    {
+    std::ostringstream result;
+    if (curr != stop)
+        result << *curr++;
+    while (curr != stop)
+        result << separator << *curr++;
+    return result.str();
+    }
+
 inline double logfactorial(unsigned n)
     {
     // Returns log(n!)

@@ -47,7 +47,7 @@ class TreeManip
 
         void                            addToCCDMap(unsigned subset_index, unsigned num_subsets);
         void                            showCCDMap(unsigned subset_index);
-        void                            estimateMergedInfo(std::string & infostr, std::vector<unsigned> & tree_counts, std::vector< std::string > & treefile_names);
+        void                            estimateMergedInfo(std::string & infostr, std::string & majrule_newick, std::vector<unsigned> & tree_counts, std::vector< std::string > & treefile_names);
 
         std::string                     debugDescribeNode(T * node) const;
         std::string                     debugDescribeTree() const;
@@ -433,7 +433,7 @@ inline void TreeManip<T>::extractNodeNumberFromName(T * nd, std::set<unsigned> &
     }
 
 template <class T>
-inline void TreeManip<T>::estimateMergedInfo(std::string & s, std::vector<unsigned> & tree_counts, std::vector< std::string > & treefile_names)
+inline void TreeManip<T>::estimateMergedInfo(std::string & s, std::string & majrule_newick, std::vector<unsigned> & tree_counts, std::vector< std::string > & treefile_names)
 	{
     assert(_ccdmap.size() > 0);
 
@@ -843,9 +843,7 @@ inline void TreeManip<T>::estimateMergedInfo(std::string & s, std::vector<unsign
         }
 
     buildFromSplitVector(majrule_splits, false);
-    s += "\nMajority-rule consensus tree for merged trees = ";
-    s += makeNewick(5);
-    s += "\n";
+    majrule_newick = makeNewick(5);
     }
 
 template <class T>

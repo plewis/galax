@@ -84,11 +84,33 @@ void Galax::processTrees(TreeManip<Node>::TreeManipShPtr tm, bool rooted, unsign
     _total_seconds += secondsElapsed(_start_time, _end_time);
     }
 
-void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, std::string & infostr)
+void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, std::string & infostr, std::string & majrule_newick)
     {
     _start_time = getCurrentTime();
 
-    tm->estimateMergedInfo(infostr, _tree_counts, _treefile_names);
+    tm->estimateMergedInfo(infostr, majrule_newick, _tree_counts, _treefile_names);
+
+    _end_time = getCurrentTime();
+    _total_seconds += secondsElapsed(_start_time, _end_time);
+    }
+
+void Galax::writeMajruleTreefile(std::string & majrule_newick)
+    {
+    _start_time = getCurrentTime();
+
+    std::string treefname = _outfprefix + ".tre";
+    _treef.open(treefname.c_str());
+
+    _treef << "#nexus\n\nbegin trees;\n  translate\n";
+    typedef std::map<unsigned, std::string> translate_map_type;
+    translate_map_type::iterator it = _translate.begin();
+    _treef << "  " << it->first << " '" << it->second << "'";
+    for (; it != _translate.end(); ++it)
+        {
+        _treef << ",\n  " << it->first << " '" << it->second << "'";
+        }
+    _treef << ";\ntree majrule = " << majrule_newick << ";\nend;" << std::endl;
+    _treef.close();
 
     _end_time = getCurrentTime();
     _total_seconds += secondsElapsed(_start_time, _end_time);
@@ -125,7 +147,9 @@ void Galax::run(std::string treefname, std::string listfname, unsigned skip, boo
             }
 
         std::string infostr;
-        estimateInfo(tm, infostr);
+        std::string majrule_newick;
+        estimateInfo(tm, infostr, majrule_newick);
+        writeMajruleTreefile(majrule_newick);
         _outf << "\n" << infostr;
 
         _outf << "\nRequired " << _total_seconds << " total seconds" << std::endl;

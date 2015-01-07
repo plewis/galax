@@ -28,7 +28,8 @@ class Galax
         void run(std::string treefname, std::string listfname, unsigned skip, bool trees_rooted);
 
     private:
-        void estimateInfo(TreeManip<Node>::TreeManipShPtr tm, std::string & infostr);
+        void estimateInfo(TreeManip<Node>::TreeManipShPtr tm, std::string & infostr, std::string & majrule_newick);
+        void writeMajruleTreefile(std::string & majrule_newick);
         void processTrees(TreeManip<Node>::TreeManipShPtr tm, bool rooted, unsigned subset_index, unsigned num_subsets);
         void getTreesFromFile(std::string treefname, unsigned skip);
         std::vector<std::string> getTreeFileList(std::string listfname);
@@ -43,6 +44,7 @@ class Galax
         boost::posix_time::ptime _end_time;
         double _total_seconds;
         std::string _outfprefix;
+        std::ofstream _treef;
         std::ofstream _outf;
     };
 
