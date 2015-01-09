@@ -14,7 +14,7 @@
 
 using namespace galax;
 
-const unsigned Galax::ALLSUBSETS = (unsigned)-1;
+const unsigned Galax::_ALLSUBSETS = (unsigned)-1;
 
 Galax::Galax(const std::string outfile_prefix)
     {
@@ -72,7 +72,10 @@ void Galax::processTrees(TreeManip<Node>::TreeManipShPtr tm, unsigned subset_ind
         {
         try
             {
-            tm->buildFromNewick(*sit, _rooted);
+            if (_rooted)
+                tm->buildFromNewick(*sit);
+            else
+                tm->buildFromNewick(*sit, _outgroup);
             tm->addToCCDMap(_ccdmap, subset_index, num_subsets);
             }
         catch(XGalax & x)
@@ -93,7 +96,7 @@ void Galax::showCCDMap(unsigned subset_index)
         {
         const SplitVector & v = it->first;
         double count = 0.0;
-        if (subset_index < ALLSUBSETS)
+        if (subset_index < _ALLSUBSETS)
             count = it->second[subset_index];
         else
             count = std::accumulate(it->second.begin(), it->second.end(), 0.0);
@@ -419,103 +422,113 @@ void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, std::string & infos
             % total_I[num_subsets]
             % (100.0*total_I[num_subsets]/total_entropy)
             % total_D);
-        }
 
-    // Report merged info for each clade sorted from highest to lowest
-    GalaxInfo::_sortby_index = 0;
-    std::sort(clade_info.begin(), clade_info.end(), std::greater<GalaxInfo>());
-    const char clade_summary[]  = "%12.5f %12.5f %12.5f %12.5f %12.5f %s\n";
-    infostr += std::string("\nClades sorted by merged info (top 95% shown):\n");
-    infostr += boost::str(boost::format("%12s %12s %12s %12s %12s %s\n")
-        % "I"
-        % "%"
-        % "cum. %"
-        % "D"
-        % "w"
-        % "clade");
-    double cumpct = 0.0;
-    BOOST_FOREACH(GalaxInfo & c, clade_info)
-        {
-        double info = c._value[0];
-        double diff = c._value[1];
-        double w    = c._value[2];
-        double pct  = 100.0*info/totalIpct;
-        cumpct += pct;
-        if (cumpct > 95)
-            break;
-        infostr += boost::str(boost::format(clade_summary)
-            % info
-            % pct
-            % cumpct
-            % diff
-            % w
-            % c._name);
-        }
+        // Report merged info for each clade sorted from highest to lowest
+        GalaxInfo::_sortby_index = 0;
+        std::sort(clade_info.begin(), clade_info.end(), std::greater<GalaxInfo>());
+        const char clade_summary[]  = "%12.5f %12.5f %12.5f %12.5f %12.5f %s\n";
+        infostr += std::string("\nClades sorted by merged info (top 95% shown):\n");
+        infostr += boost::str(boost::format("%12s %12s %12s %12s %12s %s\n")
+            % "I"
+            % "%"
+            % "cum. %"
+            % "D"
+            % "w"
+            % "clade");
+        double cumpct = 0.0;
+        BOOST_FOREACH(GalaxInfo & c, clade_info)
+            {
+            double info = c._value[0];
+            double diff = c._value[1];
+            double w    = c._value[2];
+            double pct  = 100.0*info/totalIpct;
+            cumpct += pct;
+            if (cumpct > 95)
+                break;
+            infostr += boost::str(boost::format(clade_summary)
+                % info
+                % pct
+                % cumpct
+                % diff
+                % w
+                % c._name);
+            }
 
-    // Report diff for each clade sorted from highest to lowest
-    GalaxInfo::_sortby_index = 1;
-    std::sort(clade_info.begin(), clade_info.end(), std::greater<GalaxInfo>());
-    infostr += std::string("\nClades sorted by D (top 95% shown):\n");
-    infostr += boost::str(boost::format("%12s %12s %12s %12s %12s %s\n")
-        % "D"
-        % "%"
-        % "cum. %"
-        % "Ipct"
-        % "w"
-        % "clade");
-    cumpct = 0.0;
-    BOOST_FOREACH(GalaxInfo & c, clade_info)
-        {
-        double info = c._value[0];
-        double diff = c._value[1];
-        double w    = c._value[2];
-        double pct  = 100.0*diff/total_D;
-        cumpct += pct;
-        if (cumpct > 95)
-            break;
-        infostr += boost::str(boost::format(clade_summary)
-            % diff
-            % pct
-            % cumpct
-            % info
-            % w
-            % c._name);
-        }
+        // Report diff for each clade sorted from highest to lowest
+        GalaxInfo::_sortby_index = 1;
+        std::sort(clade_info.begin(), clade_info.end(), std::greater<GalaxInfo>());
+        infostr += std::string("\nClades sorted by D (top 95% shown):\n");
+        infostr += boost::str(boost::format("%12s %12s %12s %12s %12s %s\n")
+            % "D"
+            % "%"
+            % "cum. %"
+            % "Ipct"
+            % "w"
+            % "clade");
+        cumpct = 0.0;
+        BOOST_FOREACH(GalaxInfo & c, clade_info)
+            {
+            double info = c._value[0];
+            double diff = c._value[1];
+            double w    = c._value[2];
+            double pct  = 100.0*diff/total_D;
+            cumpct += pct;
+            if (cumpct > 95)
+                break;
+            infostr += boost::str(boost::format(clade_summary)
+                % diff
+                % pct
+                % cumpct
+                % info
+                % w
+                % c._name);
+            }
 
-    // Report clade posterior for each clade sorted from highest to lowest
-    GalaxInfo::_sortby_index = 2;
-    std::sort(clade_info.begin(), clade_info.end(), std::greater<GalaxInfo>());
-    infostr += std::string("\nClades sorted by merged clade posterior (w) (only those >= 50% shown):\n");
-    infostr += boost::str(boost::format("%12s %12s %12s %s\n")
-        % "w"
-        % "Ipct"
-        % "D"
-        % "clade");
-    cumpct = 0.0;
-    std::vector<Split> majrule_splits;
-    BOOST_FOREACH(GalaxInfo & c, clade_info)
-        {
-        double info = c._value[0];
-        double diff = c._value[1];
-        double w    = c._value[2];
+        // Report clade posterior for each clade sorted from highest to lowest
+        GalaxInfo::_sortby_index = 2;
+        std::sort(clade_info.begin(), clade_info.end(), std::greater<GalaxInfo>());
+        infostr += std::string("\nClades sorted by merged clade posterior (w) (only those >= 50% shown):\n");
+        infostr += boost::str(boost::format("%12s %12s %12s %s\n")
+            % "w"
+            % "Ipct"
+            % "D"
+            % "clade");
+        cumpct = 0.0;
+        std::vector<Split> majrule_splits;
+        BOOST_FOREACH(GalaxInfo & c, clade_info)
+            {
+            double info = c._value[0];
+            double diff = c._value[1];
+            double w    = c._value[2];
 
-        if (w < 0.5)
-            break;
+            if (w < 0.5)
+                break;
 
-        // add split to vector used to construct majority-rule tree for merged case
-        Split split;
-        split.createFromPattern(c._name);
-        majrule_splits.push_back(split);
+            // add split to vector used to construct majority-rule tree for merged case
+            Split split;
+            split.createFromPattern(c._name);
 
-        infostr += boost::str(boost::format("%12.5f %12.5f %12.5f %s\n")
-            % w
-            % info
-            % diff
-            % c._name);
-        }
+            //temporary!
+            std::string tmp = split.createPatternRepresentation();
+            std::cerr << tmp << std::endl;
 
-    tm->buildFromSplitVector(majrule_splits, false);
-    majrule_newick = tm->makeNewick(5);
+            majrule_splits.push_back(split);
+
+            infostr += boost::str(boost::format("%12.5f %12.5f %12.5f %s\n")
+                % w
+                % info
+                % diff
+                % c._name);
+            }
+
+        if (majrule_splits.size() > 0)
+            {
+            tm->buildFromSplitVector(majrule_splits, false);
+            majrule_newick = tm->makeNewick(5);
+            }
+        else
+            majrule_newick = "";
+        }   // if (num_subsets > 1)
 
     _end_time = getCurrentTime();
     _total_seconds += secondsElapsed(_start_time, _end_time);
@@ -524,6 +537,12 @@ void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, std::string & infos
 void Galax::writeMajruleTreefile(std::string & majrule_newick)
     {
     _start_time = getCurrentTime();
+
+    if (majrule_newick.length() == 0)
+        {
+        _outf << "Majority rule tree is the star tree: no tree file written." << std::endl;
+        return;
+        }
 
     std::string treefname = _outfprefix + ".tre";
     _treef.open(treefname.c_str());
@@ -543,10 +562,11 @@ void Galax::writeMajruleTreefile(std::string & majrule_newick)
     _total_seconds += secondsElapsed(_start_time, _end_time);
     }
 
-void Galax::run(std::string treefname, std::string listfname, unsigned skip, bool rooted)
+void Galax::run(std::string treefname, std::string listfname, unsigned skip, bool rooted, unsigned outgroup_taxon)
     {
 	try
 		{
+        _outgroup = outgroup_taxon;
         _rooted = rooted;
         _treefile_names.clear();
         if (listfname.size() > 0)

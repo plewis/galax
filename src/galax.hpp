@@ -26,7 +26,7 @@ class Galax
                                             Galax(const std::string outfile_prefix);
                                             ~Galax();
 
-        void                                run(std::string treefname, std::string listfname, unsigned skip, bool trees_rooted);
+        void                                run(std::string treefname, std::string listfname, unsigned skip, bool trees_rooted, unsigned outgroup_taxon);
 
     private:
 
@@ -38,7 +38,7 @@ class Galax
         std::vector<std::string>            getTreeFileList(std::string listfname);
 
     private:
-        static const unsigned               ALLSUBSETS;
+        static const unsigned               _ALLSUBSETS;
         std::vector< std::string >          _treefile_names;
         std::vector< std::string >          _newicks;
         std::vector< std::string >          _merged_newicks;
@@ -51,6 +51,7 @@ class Galax
         std::string                         _outfprefix;
         std::ofstream                       _treef;
         std::ofstream                       _outf;
+        unsigned                            _outgroup;
         CCDMapType                          _ccdmap;
     };
 

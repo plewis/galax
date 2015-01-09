@@ -27,6 +27,7 @@ std::string tree_file_name = "";
 std::string list_file_name = "";
 std::string output_file_name = "output-galax";
 unsigned skipped_newicks = 0;
+unsigned outgroup_taxon = 1;
 bool trees_rooted = false;
 
 void processCommandLineOptions(int argc, const char * argv[])
@@ -44,6 +45,7 @@ void processCommandLineOptions(int argc, const char * argv[])
         ("treefile,t", boost::program_options::value<std::string>(), "name of tree file in NEXUS format")
         ("listfile,l", boost::program_options::value<std::string>(), "name of file listing whitespace-separated, NEXUS-formatted tree file names to be processed")
         ("outfile,o", boost::program_options::value<std::string>(), "file name prefix of output file to create (.txt extension will be added)")
+        ("outgroup,g", boost::program_options::value<unsigned>(), "number of taxon to use as the outgroup (where first taxon listed in treefile translate statement is 1)")
         ;
     boost::program_options::store(boost::program_options::parse_command_line(argc, argv, desc), vm);
     try
@@ -99,6 +101,17 @@ void processCommandLineOptions(int argc, const char * argv[])
         skipped_newicks = vm["skip"].as<unsigned>();
         }
 
+    // If user used --outgroup on command line, store number of taxon to use as the outgroup
+    if (vm.count("outgroup"))
+        {
+        outgroup_taxon = vm["outgroup"].as<unsigned>();
+        if (outgroup_taxon < 1)
+            {
+            std::cout << "Outgroup taxon must be an integer greater than 0 and less than or equal to the number of taxa\n";
+            std::exit(1);
+            }
+        }
+
     // Assuming user used --outfile on command line or outfile=<file name> in config file, store supplied file name prefix
     if (vm.count("outfile") > 0)
         {
@@ -145,7 +158,10 @@ void processCommandLineOptions(int argc, const char * argv[])
     if (trees_rooted)
         std::cout << "Trees assumed to be rooted" << std::endl;
     else
+        {
         std::cout << "Trees assumed to be unrooted" << std::endl;
+        std::cout << "Outgroup for polarizing splits will be taxon number " << outgroup_taxon << std::endl;
+        }
 
     if (skipped_newicks == 0)
         std::cout << "No trees will be skipped" << std::endl;
@@ -159,7 +175,7 @@ int main(int argc, const char * argv[])
     {
     processCommandLineOptions(argc, argv);
 
-    Galax(output_file_name).run(tree_file_name, list_file_name, skipped_newicks, trees_rooted);
+    Galax(output_file_name).run(tree_file_name, list_file_name, skipped_newicks, trees_rooted, outgroup_taxon);
 
     return 0;
     }

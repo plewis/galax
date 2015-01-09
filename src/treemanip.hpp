@@ -46,7 +46,7 @@ class TreeManip
         void                                            setTree(typename Tree<T>::TreeShPtr t) {_tree = t;}
                 
         T *                                             rerootAt(int node_index);
-        void                                            buildFromNewick(const std::string newick, bool rooted = false);
+        void                                            buildFromNewick(const std::string newick, unsigned root_at = 0);
         void                                            buildFromSplitVector(const std::vector<Split> & splits, bool rooted);
         void                                            buildStarTree(unsigned ntips, bool rooted);
 		std::string                                     makeNewick(unsigned ndecimals) const;
@@ -145,7 +145,7 @@ template <class T>
 inline void TreeManip<T>::refreshPreorder(T * root_node)
     {
     // Create vector of node pointers in preorder sequence
-    _tree->_preorder.clear();
+    _tree->_preorder.clear();   //TODO: why is it necessary to clear?
     _tree->_preorder.reserve(_tree->_nodes.size() - 1); // _preorder does not include root node
 
 	if (!root_node)
@@ -203,6 +203,8 @@ inline void TreeManip<T>::refreshPreorder(T * root_node)
         
     // renumber internal nodes in postorder sequence and update _split data members along the way
     int curr_internal = _tree->_nleaves;
+    if (_tree->_is_rooted)
+        ++curr_internal;
     for (typename std::vector<T *>::reverse_iterator rit = _tree->_preorder.rbegin(); rit != _tree->_preorder.rend(); ++rit)
         {
         T * nd = *rit;
@@ -219,7 +221,7 @@ inline void TreeManip<T>::refreshPreorder(T * root_node)
             {
             // nd is an internal node
             
-            // node numbers for internal nodes begin with _tree->_nleaves
+            // node numbers for internal nodes begin at _tree->_nleaves (if rooted tree, root node has number _tree->_nleaves)
             nd->_number = curr_internal++;
 
             // update parent's split
@@ -465,19 +467,27 @@ inline void TreeManip<T>::addToCCDMap(CCDMapType & ccdmap, unsigned subset_index
 #define QUICK_AND_DIRTY_NODE_NUMBERS
 
 template <class T>
-inline void TreeManip<T>::buildFromNewick(const std::string newick, bool rooted)
+inline void TreeManip<T>::buildFromNewick(const std::string newick, unsigned root_at)
 	{
-    // Assume that if _tree already exists, it has the correct number of nodes
-    if (!_tree)
+    unsigned nleaves_in_newick = countNewickLeaves(newick);
+    bool rooted = (root_at == 0);
+    unsigned num_nodes = 2*nleaves_in_newick - (rooted ? 0 : 2);
+    if (_tree)
+        {
+        // Just need to perform sanity checks
+        assert(root_at > 0 || _tree->_is_rooted);       // if _tree exists, must be already rooted if root_at implies rooted
+        assert(_tree->_nleaves == nleaves_in_newick);   // expecting existing tree to have same number of leaves
+        assert(_tree->_nodes.size() == num_nodes);      // ensure the number of nodes allocated is correct
+        }
+    else
         {
         _tree.reset(new Tree<T>());
         _tree->_nleaves = countNewickLeaves(newick);
         if (_tree->_nleaves == 0)
             throw XGalax("Expecting newick tree description to have at least 1 leaf");
-        unsigned max_nodes = 2*_tree->_nleaves - (rooted ? 0 : 2);
-        _tree->_nodes.resize(max_nodes);
+        _tree->_nodes.resize(num_nodes);
         }
-    _tree->_is_rooted = rooted;
+    _tree->_is_rooted = (root_at == 0);
     _tree->_preorder.assign(_tree->_preorder.size(), 0);
 
 #ifndef QUICK_AND_DIRTY_NODE_NUMBERS
@@ -713,8 +723,8 @@ inline void TreeManip<T>::buildFromNewick(const std::string newick, bool rooted)
             }
         else
             {
-            // Root at leaf whose _number = 0
-            root_nd = rerootAt(0);
+            // Root at leaf whose _number = root_at - 1
+            root_nd = rerootAt(root_at - 1);
             refreshPreorder(root_nd);
             }
             
@@ -779,6 +789,9 @@ inline void TreeManip<T>::buildStarTree(unsigned ntips, bool rooted)
 template <class T>
 inline void TreeManip<T>::buildFromSplitVector(const std::vector<Split> & split_vect, bool rooted)
     {
+    if (split_vect.size() == 0)
+        throw XGalax("Tried to build tree from zero-length split vector");
+
 	try
 		{
         // Start with clean slate in case _tree already exists
