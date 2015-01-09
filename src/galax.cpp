@@ -283,12 +283,12 @@ void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, std::string & infos
                             % I[num_subsets]
                             % Ipct[num_subsets]
                             % D);
-                        std::vector<double> tmp;
-                        tmp.push_back(Ipct[num_subsets]);
-                        tmp.push_back(D);
-                        tmp.push_back(w[num_subsets]);
-                        clade_info.push_back(GalaxInfo(clade.createPatternRepresentation(), tmp));
                         }
+                    std::vector<double> tmp;
+                    tmp.push_back(Ipct[num_subsets]);
+                    tmp.push_back(D);
+                    tmp.push_back(w[num_subsets]);
+                    clade_info.push_back(GalaxInfo(clade.createPatternRepresentation(), tmp));
                     }
 
                 // Initialize data for next clade
@@ -376,12 +376,12 @@ void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, std::string & infos
                 % I[num_subsets]
                 % Ipct[num_subsets]
                 % D);
-                std::vector<double> tmp;
-                tmp.push_back(Ipct[num_subsets]);
-                tmp.push_back(D);
-                tmp.push_back(w[num_subsets]);
-                clade_info.push_back(GalaxInfo(clade.createPatternRepresentation(), tmp));
             }
+            std::vector<double> tmp;
+            tmp.push_back(Ipct[num_subsets]);
+            tmp.push_back(D);
+            tmp.push_back(w[num_subsets]);
+            clade_info.push_back(GalaxInfo(clade.createPatternRepresentation(), tmp));
         }
 
     // Report totals for each subset
@@ -413,7 +413,10 @@ void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, std::string & infos
             % pct
             % "---");
         }
+
+    // Sort clades for merged case by Ipct, D, and w and save majrule tree
     double totalIpct = 0.0;
+    double cumpct = 0.0;
     if (num_subsets > 1)
         {
         totalIpct = (100.0*total_I[num_subsets]/total_entropy);
@@ -435,7 +438,7 @@ void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, std::string & infos
             % "D"
             % "w"
             % "clade");
-        double cumpct = 0.0;
+        cumpct = 0.0;
         BOOST_FOREACH(GalaxInfo & c, clade_info)
             {
             double info = c._value[0];
@@ -483,52 +486,52 @@ void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, std::string & infos
                 % w
                 % c._name);
             }
+        }   //if (num_subsets > 1)
 
-        // Report clade posterior for each clade sorted from highest to lowest
-        GalaxInfo::_sortby_index = 2;
-        std::sort(clade_info.begin(), clade_info.end(), std::greater<GalaxInfo>());
-        infostr += std::string("\nClades sorted by merged clade posterior (w) (only those >= 50% shown):\n");
-        infostr += boost::str(boost::format("%12s %12s %12s %s\n")
-            % "w"
-            % "Ipct"
-            % "D"
-            % "clade");
-        cumpct = 0.0;
-        std::vector<Split> majrule_splits;
-        BOOST_FOREACH(GalaxInfo & c, clade_info)
-            {
-            double info = c._value[0];
-            double diff = c._value[1];
-            double w    = c._value[2];
+    // Report clade posterior for each clade sorted from highest to lowest
+    GalaxInfo::_sortby_index = 2;
+    std::sort(clade_info.begin(), clade_info.end(), std::greater<GalaxInfo>());
+    infostr += std::string("\nClades sorted by merged clade posterior (w) (only those >= 50% shown):\n");
+    infostr += boost::str(boost::format("%12s %12s %12s %s\n")
+        % "w"
+        % "Ipct"
+        % "D"
+        % "clade");
+    cumpct = 0.0;
+    std::vector<Split> majrule_splits;
+    BOOST_FOREACH(GalaxInfo & c, clade_info)
+        {
+        double info = c._value[0];
+        double diff = c._value[1];
+        double w    = c._value[2];
 
-            if (w < 0.5)
-                break;
+        if (w < 0.5)
+            break;
 
-            // add split to vector used to construct majority-rule tree for merged case
-            Split split;
-            split.createFromPattern(c._name);
+        // add split to vector used to construct majority-rule tree for merged case
+        Split split;
+        split.createFromPattern(c._name);
 
-            //temporary!
-            std::string tmp = split.createPatternRepresentation();
-            std::cerr << tmp << std::endl;
+        //temporary!
+        //std::string tmp = split.createPatternRepresentation();
+        //std::cerr << tmp << std::endl;
 
-            majrule_splits.push_back(split);
+        majrule_splits.push_back(split);
 
-            infostr += boost::str(boost::format("%12.5f %12.5f %12.5f %s\n")
-                % w
-                % info
-                % diff
-                % c._name);
-            }
+        infostr += boost::str(boost::format("%12.5f %12.5f %12.5f %s\n")
+            % w
+            % info
+            % diff
+            % c._name);
+        }
 
-        if (majrule_splits.size() > 0)
-            {
-            tm->buildFromSplitVector(majrule_splits, false);
-            majrule_newick = tm->makeNewick(5);
-            }
-        else
-            majrule_newick = "";
-        }   // if (num_subsets > 1)
+    if (majrule_splits.size() > 0)
+        {
+        tm->buildFromSplitVector(majrule_splits, false);
+        majrule_newick = tm->makeNewick(5);
+        }
+    else
+        majrule_newick = "";
 
     _end_time = getCurrentTime();
     _total_seconds += secondsElapsed(_start_time, _end_time);
