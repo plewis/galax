@@ -64,7 +64,7 @@ std::vector<std::string> Galax::getTreeFileList(std::string listfname)
     }
 
 
-void Galax::processTrees(TreeManip<Node>::TreeManipShPtr tm, unsigned subset_index, unsigned num_subsets)
+void Galax::processTrees(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap, unsigned subset_index, unsigned num_subsets)
     {
     _start_time = getCurrentTime();
 
@@ -73,7 +73,7 @@ void Galax::processTrees(TreeManip<Node>::TreeManipShPtr tm, unsigned subset_ind
         try
             {
             tm->buildFromNewick(*sit, (_rooted ? 0 : _outgroup));
-            tm->addToCCDMap(_ccdmap, subset_index, num_subsets);
+            tm->addToCCDMap(ccdmap, subset_index, num_subsets);
             }
         catch(XGalax & x)
             {
@@ -86,10 +86,10 @@ void Galax::processTrees(TreeManip<Node>::TreeManipShPtr tm, unsigned subset_ind
     _total_seconds += secondsElapsed(_start_time, _end_time);
     }
 
-void Galax::showCCDMap(unsigned subset_index)
+void Galax::showCCDMap(CCDMapType & ccdmap, unsigned subset_index)
 	{
-    std::cerr << "CCD map has " << _ccdmap.size() << " elements." << std::endl;
-    for (CCDMapType::iterator it = _ccdmap.begin(); it != _ccdmap.end(); ++it)
+    std::cerr << "CCD map has " << ccdmap.size() << " elements." << std::endl;
+    for (CCDMapType::iterator it = ccdmap.begin(); it != ccdmap.end(); ++it)
         {
         const SplitVector & v = it->first;
         double count = 0.0;
@@ -106,17 +106,17 @@ void Galax::showCCDMap(unsigned subset_index)
         }
     }
 
-void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, std::string & infostr, std::string & majrule_newick)
+void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap, std::string & infostr, std::string & majrule_newick)
     {
     _start_time = getCurrentTime();
 
-    assert(_ccdmap.size() > 0);
+    assert(ccdmap.size() > 0);
 
     unsigned num_subsets = (unsigned)_tree_counts.size();
     unsigned total_trees = std::accumulate(_tree_counts.begin(), _tree_counts.end(), 0);
 
     // Determine maximum possible entropy
-    Split first_clade = (_ccdmap.begin()->first)[0];
+    Split first_clade = (ccdmap.begin()->first)[0];
     unsigned ntaxa = first_clade.countOnBits() + first_clade.countOffBits();
     if (!_rooted)
         ntaxa -= 1;
@@ -149,7 +149,7 @@ void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, std::string & infos
     bool first = true;
     const char indiv_template[]  = "%20s %12d %12.5f %12.5f %12.5f %12.5f %12.5f %12.5f %12s\n";
     const char merged_template[] = "%20s %12d %12.5f %12.5f %12.5f %12.5f %12.5f %12.5f %12.5f\n";
-    for (CCDMapType::iterator it = _ccdmap.begin(); it != _ccdmap.end(); ++it)
+    for (CCDMapType::iterator it = ccdmap.begin(); it != ccdmap.end(); ++it)
         {
         // v contains either 1 split (unconditional) or 3 splits (conditional)
         const SplitVector & v = it->first;
@@ -157,7 +157,7 @@ void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, std::string & infos
         std::vector<double> & count = it->second;
         double sum_counts = std::accumulate(count.begin(), count.end(), 0.0);
 
-        // Depends on _ccdmap keys (split vectors) being sorted such that an entry for an unconditional clade (e.g. ABC)
+        // Depends on ccdmap keys (split vectors) being sorted such that an entry for an unconditional clade (e.g. ABC)
         // precedes any conditional clade entries (e.g. A|BC) that have that clade as parent. Thus, when next unconditional
         // clade entry is encountered, we know that there are no more conditional clade entries for the previous parent
         // clade and we can at that point compute the information for the previous parent.
@@ -514,6 +514,7 @@ void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, std::string & infos
         // add split to vector used to construct majority-rule tree for merged case
         Split split;
         split.createFromPattern(c._name);
+        split.setWeight(w);
 
         majrule_splits.push_back(split);
 
@@ -524,10 +525,17 @@ void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, std::string & infos
             % c._name);
         }
 
+    infostr += "\nOrder of taxa in split representations:\n";
+    typedef std::pair<unsigned, std::string> translate_map_type;
+    BOOST_FOREACH(const translate_map_type & translate_key_value, _translate)
+        {
+        infostr += boost::str(boost::format("%12d  %s\n") % translate_key_value.first % translate_key_value.second);
+        }
+
     if (majrule_splits.size() > 0)
         {
         tm->buildFromSplitVector(majrule_splits, (_rooted ? 0 : _outgroup));
-        majrule_newick = tm->makeNewick(5);
+        majrule_newick = tm->makeNewick(5, true);
         }
     else
         majrule_newick = "";
@@ -536,7 +544,7 @@ void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, std::string & infos
     _total_seconds += secondsElapsed(_start_time, _end_time);
     }
 
-void Galax::writeMajruleTreefile(std::string & majrule_newick)
+void Galax::writeMajruleTreefile(std::string fnprefix, std::string & majrule_newick)
     {
     _start_time = getCurrentTime();
 
@@ -546,7 +554,7 @@ void Galax::writeMajruleTreefile(std::string & majrule_newick)
         return;
         }
 
-    std::string treefname = _outfprefix + ".tre";
+    std::string treefname = boost::str(boost::format("%s-%s.tre") % _outfprefix % fnprefix);
     _treef.open(treefname.c_str());
 
     _treef << "#nexus\n\nbegin trees;\n  translate\n";
@@ -574,35 +582,74 @@ void Galax::run(std::string treefname, std::string listfname, unsigned skip, boo
             throw XGalax("outgroup taxon specified must be a number greater than zero unless trees are rooted (in which case outgroup specification is ignored)");
 
         _treefile_names.clear();
-        if (listfname.size() > 0)
-            _treefile_names = getTreeFileList(listfname);
-        else
-            _treefile_names.push_back(treefname);
-
-        unsigned ntreefiles = (unsigned)_treefile_names.size();
-        if (ntreefiles == 1)
-            _outf << "Read 1 tree file name from list file " << listfname << "\n";
-        else
-            _outf << "Read " << ntreefiles << " tree file names from list file " << listfname << "\n";
-
-        unsigned n = (unsigned)_treefile_names.size();
-        TreeManip<Node>::TreeManipShPtr tm(new TreeManip<Node>());
-
-        unsigned subset_index = 0;
-        for (std::vector<std::string>::const_iterator it = _treefile_names.begin(); it != _treefile_names.end(); ++it)
+        bool is_treefile = (treefname.length() > 0);
+        bool is_listfile = (listfname.length() > 0);
+        if (is_listfile)
             {
-            std::string treefname = *it;
-
-            getTreesFromFile(treefname, skip);
-            processTrees(tm, subset_index, n);
-
-            ++subset_index;
+            _treefile_names = getTreeFileList(listfname);
+            if (_treefile_names.size() == 0)
+                throw XGalax("found no tree file names in specified listfile");
+            else if (_treefile_names.size() == 1)
+                throw XGalax("use --treefile (not --listfile) if there is only one tree file to process");
             }
 
         std::string infostr;
-        std::string majrule_newick;
-        estimateInfo(tm, infostr, majrule_newick);
-        writeMajruleTreefile(majrule_newick);
+        std::string majrule_tree;
+        std::string majrule_merged;
+        TreeManip<Node>::TreeManipShPtr tm(new TreeManip<Node>());
+        if (is_treefile && is_listfile)
+            {
+            //
+            // Both --listfile and --treefile provided on command line
+            //
+            _outf << "Read " << _treefile_names.size() << " tree file names from list file " << listfname << "\n";
+            _outf << "Read 1 tree file name from tree file " << treefname << "\n";
+
+            // process --treefile and construct majrule consensus tree
+            getTreesFromFile(treefname, skip);
+            processTrees(tm, _ccdtree, 0, 1);
+            estimateInfo(tm, _ccdtree, infostr, majrule_tree);
+            writeMajruleTreefile("majrule", majrule_tree);
+
+            // process --listfile and construct majrule consensus tree for merged trees
+            // note: infostr is overwritten
+            unsigned subset_index = 0;
+            BOOST_FOREACH(std::string & tree_file_name, _treefile_names)
+                {
+                getTreesFromFile(tree_file_name, skip);
+                processTrees(tm, _ccdlist, subset_index++, (unsigned)_treefile_names.size());
+                }
+            estimateInfo(tm, _ccdlist, infostr, majrule_merged);
+            writeMajruleTreefile("majrule-merged", majrule_merged);
+            }
+        else if (is_treefile)
+            {
+            //
+            // Only --treefile provided on command line
+            //
+            _outf << "Read 1 tree file name from tree file " << treefname << "\n";
+
+            getTreesFromFile(treefname, skip);
+            processTrees(tm, _ccdlist, 0, 1);
+            estimateInfo(tm, _ccdlist, infostr, majrule_tree);
+            writeMajruleTreefile("majrule", majrule_tree);
+            }
+        else
+            {
+            //
+            // Only --listfile provided on command line
+            //
+            _outf << "Read " << _treefile_names.size() << " tree file names from list file " << listfname << "\n";
+
+            unsigned subset_index = 0;
+            BOOST_FOREACH(std::string & tree_file_name, _treefile_names)
+                {
+                getTreesFromFile(tree_file_name, skip);
+                processTrees(tm, _ccdlist, subset_index++, (unsigned)_treefile_names.size());
+                }
+            estimateInfo(tm, _ccdlist, infostr, majrule_merged);
+            writeMajruleTreefile("majrule-merged", majrule_merged);
+            }
 
         if (_rooted)
             _outf << "Input trees assumed to be rooted\n";
@@ -621,3 +668,4 @@ void Galax::run(std::string treefname, std::string listfname, unsigned skip, boo
 		std::cerr << "ERROR: " << x.what() << std::endl;
 		}
     }
+

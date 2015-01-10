@@ -246,6 +246,7 @@
 					"$(BOOST_ROOT)/lib/libboost_regex.a",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
 			};
 			name = Debug;
 		};
@@ -268,6 +269,7 @@
 					"$(BOOST_ROOT)/lib/libboost_regex.a",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
 			};
 			name = Release;
 		};

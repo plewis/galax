@@ -101,6 +101,9 @@ class Split
         void 				            unsetBits(const std::vector<unsigned> bits_to_unset);
 
 		void 				            invertSplit();
+
+        void                            setWeight(double w);
+        double                          getWeight() const;
 			
 	private:
 
@@ -118,6 +121,7 @@ class Split
 		char			                _off_symbol;		//!< is the symbol used to represent bits that have been cleared (i.e. "off")
 		char			                _excl_symbol;       //!< is the symbol used to represent bits that have been excluded (i.e. should not be considered off or on)
         std::vector<unsigned>           _excl_bits;         //!< is a sorted vector containing bit positions corresponding to excluded taxa (lowest possible value is 0)
+        double                          _weight;            //!< is the split weight (e.g. marginal clade posterior probability)
         
 	public:
 		typedef boost::shared_ptr< Split > SplitShPtr;
@@ -192,6 +196,7 @@ inline Split::Split(const Split & other)
 inline void Split::copy(const Split & other)
 	{
     _split_ntax		= other._split_ntax;
+    _weight 		= other._weight;
     _nunits			= other._nunits;
     _on_symbol		= other._on_symbol;
     _off_symbol		= other._off_symbol;
@@ -642,6 +647,22 @@ inline void Split::setBit(unsigned t)
 	unsigned j = t % _bits_per_unit;
 	_unit[i] |= (_split_unity << j);
 	}
+
+/**
+*   Sets the split weight to \c w.
+*/
+inline void Split::setWeight(double w)
+	{
+    _weight = w;
+    }
+
+/**
+*   Returns the split weight.
+*/
+inline double Split::getWeight() const
+	{
+    return _weight;
+    }
 
 /**
 *   Sets all bits corresponding to values in the supplied vector \c bits_to_set. Values in \c bits_to_set are 0-based

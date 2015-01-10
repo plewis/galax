@@ -30,10 +30,10 @@ class Galax
 
     private:
 
-        void                                showCCDMap(unsigned subset_index);
-        void                                estimateInfo(TreeManip<Node>::TreeManipShPtr tm, std::string & infostr, std::string & majrule_newick);
-        void                                writeMajruleTreefile(std::string & majrule_newick);
-        void                                processTrees(TreeManip<Node>::TreeManipShPtr tm, unsigned subset_index, unsigned num_subsets);
+        void                                showCCDMap(CCDMapType & ccdmap, unsigned subset_index);
+        void                                estimateInfo(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap, std::string & infostr, std::string & majrule_newick);
+        void                                writeMajruleTreefile(std::string fnprefix, std::string & majrule_newick);
+        void                                processTrees(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap, unsigned subset_index, unsigned num_subsets);
         void                                getTreesFromFile(std::string treefname, unsigned skip);
         std::vector<std::string>            getTreeFileList(std::string listfname);
 
@@ -52,7 +52,8 @@ class Galax
         std::ofstream                       _treef;
         std::ofstream                       _outf;
         unsigned                            _outgroup;
-        CCDMapType                          _ccdmap;
+        CCDMapType                          _ccdlist;
+        CCDMapType                          _ccdtree;
     };
 
 }

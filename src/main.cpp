@@ -42,7 +42,7 @@ void processCommandLineOptions(int argc, const char * argv[])
         ("rooted,r", boost::program_options::bool_switch()->default_value(false), "expect trees to be rooted (leave out this option to assume unrooted)")
         ("details,d", boost::program_options::bool_switch()->default_value(false), "save information content details for each tree file")
         ("skip,s", boost::program_options::value<unsigned>(), "number of tree descriptions to skip at beginning of tree file")
-        ("treefile,t", boost::program_options::value<std::string>(), "name of tree file in NEXUS format")
+        ("treefile,t", boost::program_options::value<std::string>(), "name of tree file in NEXUS format (used to generated a majority-rule consensus tree)")
         ("listfile,l", boost::program_options::value<std::string>(), "name of file listing whitespace-separated, NEXUS-formatted tree file names to be processed")
         ("outfile,o", boost::program_options::value<std::string>(), "file name prefix of output file to create (.txt extension will be added)")
         ("outgroup,g", boost::program_options::value<unsigned>(), "number of taxon to use as the outgroup (where first taxon listed in treefile translate statement is 1)")
@@ -130,28 +130,31 @@ void processCommandLineOptions(int argc, const char * argv[])
         list_file_name = vm["listfile"].as<std::string>();
         }
 
-    // Check to make sure user did not specify both --treefile and --listfile
-    if (list_file_name.size() > 0 && tree_file_name.size() > 0)
-        {
-        std::cout << "Cannot specify both --treefile and --listfile on command line or in config file\n";
-        std::cout << desc << std::endl;
-        std::exit(1);
-        }
-
     // Check to make sure user specified either --treefile or --listfile
     if (list_file_name.size() == 0 && tree_file_name.size() == 0)
         {
-        std::cout << "Must specify either --treefile or --listfile on command line or in config file\n";
+        std::cout << "Must specify either --treefile or --listfile (or both) on command line or in config file\n";
         std::cout << desc << std::endl;
         std::exit(1);
         }
 
     // Output feedback to reassure user
 
-    if (list_file_name.size() > 0)
+    if (list_file_name.length() > 0 && tree_file_name.length() > 0)
+        {
         std::cout << "Trees will be read from tree files specified in file " << list_file_name << std::endl;
+        std::cout << "Majority-rule consensus will be constructed from trees in the file " << tree_file_name << std::endl;
+        }
+    else if (list_file_name.length() > 0)
+        {
+        std::cout << "Trees will be read from tree files specified in file " << list_file_name << std::endl;
+        std::cout << "Majority-rule consensus will be constructed from the merged tree set" << std::endl;
+        }
     else
+        {
         std::cout << "Trees will be read from file " << tree_file_name << std::endl;
+        std::cout << "Majority-rule consensus will be constructed from these trees" << std::endl;
+        }
 
     std::cout << "Output will be stored in file " << output_file_name << std::endl;
 
