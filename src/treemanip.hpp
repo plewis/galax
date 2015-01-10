@@ -46,9 +46,9 @@ class TreeManip
         void                                            setTree(typename Tree<T>::TreeShPtr t) {_tree = t;}
                 
         T *                                             rerootAt(int node_index);
-        void                                            buildFromNewick(const std::string newick, unsigned root_at = 0);
-        void                                            buildFromSplitVector(const std::vector<Split> & splits, bool rooted);
-        void                                            buildStarTree(unsigned ntips, bool rooted);
+        void                                            buildFromNewick(const std::string newick, unsigned root_at);
+        void                                            buildFromSplitVector(const std::vector<Split> & splits, unsigned root_at);
+        void                                            buildStarTree(unsigned nleaves, unsigned root_at);
 		std::string                                     makeNewick(unsigned ndecimals) const;
 
         void                                            addToCCDMap(CCDMapType & ccdmap, unsigned subset_index, unsigned num_subsets);
@@ -240,35 +240,35 @@ inline void TreeManip<T>::refreshPreorder(T * root_node)
             }
         }
 
-    if (_tree->_is_rooted)
-        root_node->_number = curr_internal;
-    else
-        {
-        // If the first (right-most) bit is "on" in the split for the first preorder node (only
-        // child of root node), will need to invert all splits before adding them to treestats:
-        //
-        //  2     3     4     5      |   1     5     4     3
-        //   \   /     /     /       |    \   /     /     /
-        //    \ /     /     /        |     \ /     /     /
-        //   00110   /     /         |    10001   /     /
-        //      \   /     /          |       \   /     /
-        //       \ /     /           |        \ /     /
-        //      01110   /            |       11001   /
-        //         \   /             |          \   /
-        //          \ /              |           \ /
-        //         11110 <- ok       |          11101 <- needs to be inverted
-        //           |               |            |
-        //           |               |            |
-        //           1               |            2
-        //
-        if (_tree->_preorder[0]->_split.isBitSet(0))
-            {
-            BOOST_FOREACH(T * nd, _tree->_preorder)
-                {
-                nd->_split.invertSplit();
-                }
-            }
-        }
+    //if (_tree->_is_rooted)
+    //    root_node->_number = curr_internal;
+    //else
+    //    {
+    //    // If the first (right-most) bit is "on" in the split for the first preorder node (only
+    //    // child of root node), will need to invert all splits
+    //    //
+    //    //  2     3     4     5      |   1     5     4     3
+    //    //   \   /     /     /       |    \   /     /     /
+    //    //    \ /     /     /        |     \ /     /     /
+    //    //   00110   /     /         |    10001   /     /
+    //    //      \   /     /          |       \   /     /
+    //    //       \ /     /           |        \ /     /
+    //    //      01110   /            |       11001   /
+    //    //         \   /             |          \   /
+    //    //          \ /              |           \ /
+    //    //         11110 <- ok       |          11101 <- needs to be inverted
+    //    //           |               |            |
+    //    //           |               |            |
+    //    //           1               |            2
+    //    //
+    //    if (_tree->_preorder[0]->_split.isBitSet(0))
+    //        {
+    //        BOOST_FOREACH(T * nd, _tree->_preorder)
+    //            {
+    //            nd->_split.invertSplit();
+    //            }
+    //        }
+    //    }
     }
 
 /*----------------------------------------------------------------------------------------------------------------------
@@ -385,7 +385,7 @@ inline T * TreeManip<T>::rerootAt(int node_index)
         
     T & nd = *it;
     if (nd._left_child)
-        throw XGalax(boost::str(boost::format("cannot currently root trees at internal nodes (e.g. node %d)") % nd._number)); //TODO remove this restriction
+        throw XGalax(boost::str(boost::format("cannot currently root trees at internal nodes (e.g. node %d)") % (nd._number + 1))); //TODO remove this restriction
     
     T * t = &nd;
     T * m = nd._parent;
@@ -738,17 +738,18 @@ inline void TreeManip<T>::buildFromNewick(const std::string newick, unsigned roo
 	}
 
 template <class T>
-inline void TreeManip<T>::buildStarTree(unsigned ntips, bool rooted)
+inline void TreeManip<T>::buildStarTree(unsigned nleaves, unsigned root_at)
 	{
+    bool rooted = (root_at == 0);
+    unsigned num_nodes = 2*nleaves - (rooted ? 0 : 2);
 	try
 		{
-        if (ntips < 3)
-            throw XGalax(boost::str(boost::format("TreeManip<T>::buildStarTree expected splits to contain at least 3 taxa, but found %d instead") % ntips));
+        if (nleaves < 3)
+            throw XGalax(boost::str(boost::format("TreeManip<T>::buildStarTree expected splits to contain at least 3 taxa, but found %d instead") % nleaves));
 
         _tree->clear();
 
-        unsigned max_nodes = 2*ntips - (rooted ? 0 : 2);
-        _tree->_nodes.resize(max_nodes);
+        _tree->_nodes.resize(num_nodes);
         _tree->_is_rooted = rooted;
         _tree->_preorder.assign(_tree->_preorder.size(), 0);
 
@@ -757,25 +758,27 @@ inline void TreeManip<T>::buildStarTree(unsigned ntips, bool rooted)
         T * root = &_tree->_nodes[curr_node_index];
         root->_edge_length = 1.0;
         if (!rooted)
-            root->_number = curr_tip_number++;
+            root->_number = root_at - 1;
 
         T * hub = &_tree->_nodes[++curr_node_index];
         root->_left_child = hub;
         hub->_parent = root;
         hub->_edge_length = 1.0;
-        hub->_number = ntips;
+        hub->_number = nleaves;
 
-        for (unsigned i = (rooted ? 0 : 1); i < ntips; ++i)
+        for (unsigned i = (rooted ? 0 : 1); i < nleaves; ++i)
             {
             T * nd = &_tree->_nodes[++curr_node_index];
             nd->_right_sib = hub->_left_child;
             nd->_parent = hub;
             nd->_edge_length = 1.0;
+            if (!rooted && curr_tip_number == root_at - 1)
+                curr_tip_number++;
             nd->_number = curr_tip_number++;
             hub->_left_child = nd;
             }
 
-        assert(curr_tip_number == ntips);
+        assert(curr_tip_number == nleaves || root_at == nleaves);
 
         refreshPreorder(root);
         }
@@ -787,8 +790,9 @@ inline void TreeManip<T>::buildStarTree(unsigned ntips, bool rooted)
 	}
 
 template <class T>
-inline void TreeManip<T>::buildFromSplitVector(const std::vector<Split> & split_vect, bool rooted)
+inline void TreeManip<T>::buildFromSplitVector(const std::vector<Split> & split_vect, unsigned root_at)
     {
+    bool rooted = (root_at == 0);
     if (split_vect.size() == 0)
         throw XGalax("Tried to build tree from zero-length split vector");
 
@@ -796,6 +800,7 @@ inline void TreeManip<T>::buildFromSplitVector(const std::vector<Split> & split_
 		{
         // Start with clean slate in case _tree already exists
         _tree.reset(new Tree<T>());
+        _tree->_is_rooted = rooted;
         _tree->_nleaves = split_vect[0].getNTaxa();
         if (_tree->_nleaves == 0)
             throw XGalax("Expecting splits in supplied split_vect to have at least 1 taxon");
@@ -821,7 +826,7 @@ inline void TreeManip<T>::buildFromSplitVector(const std::vector<Split> & split_
         std::sort(splits.begin(), splits.end());
 
         // Build a star tree to begin with
-        buildStarTree(ntips, rooted);
+        buildStarTree(ntips, root_at);
 
         // Star tree used ntips + 1 nodes if unrooted, ntips + 2 nodes if rooted
         unsigned curr_node_index = ntips + (rooted ? 1 : 0);
@@ -889,6 +894,23 @@ inline void TreeManip<T>::buildFromSplitVector(const std::vector<Split> & split_
 		}
 	}
 
+// a ************-*
+//
+//   12345678901234
+// b ***-*-*---**-*
+// c *---*------*-*
+// d *----------*-*
+//
+//   12345678901234
+// e ---*-*-***----
+// f ---*---*-*----
+//
+//   12345678901234
+// g -**---*---*---
+// h -**-------*---
+//
+// (((7,(2,3,11)),(5,(1,12,14)))),(6,9,(4,8,10)),13)
+
 template <class T>
 inline std::string TreeManip<T>::makeNewick(unsigned ndecimals) const
     {
@@ -896,6 +918,7 @@ inline std::string TreeManip<T>::makeNewick(unsigned ndecimals) const
     boost::format edgelen_format(boost::str(boost::format(":%%.%df") % ndecimals));
 
     std::string s = "(";
+    //std::cerr << s << std::endl;
 	unsigned open_parens = 1;
 
 	// Start with root node, which may actually represent an extant tip (unrooted trees are
@@ -912,10 +935,14 @@ inline std::string TreeManip<T>::makeNewick(unsigned ndecimals) const
         // In an unrooted tree, where the root node is actually an upside-down extant tip,
         // the root node's edge length is actually held by its only child
         s += boost::str(edgelen_format % nd->_edge_length);
+        //std::cerr << s << std::endl;
 		}
 
     if (!rooted)
+        {
 	    s += ",";
+        //std::cerr << s << std::endl;
+        }
 
 	// Now visit all other nodes
 	for (++nit; nit != _tree->_preorder.end(); ++nit)
@@ -926,6 +953,7 @@ inline std::string TreeManip<T>::makeNewick(unsigned ndecimals) const
 			{
 			// nd is internal
 			s += "(";
+            //std::cerr << s << std::endl;
 			++open_parens;
 			}
         else
@@ -934,10 +962,12 @@ inline std::string TreeManip<T>::makeNewick(unsigned ndecimals) const
 			// Output tip node number plus 1, then the edge length
             s += boost::str(boost::format("%d") % (nd->_number + 1));
             s += boost::str(edgelen_format % nd->_edge_length);
+            //std::cerr << s << std::endl;
 
 			if (nd->_right_sib)
                 {
 				s += ",";
+                //std::cerr << s << std::endl;
                 }
 			else
 				{
@@ -951,12 +981,14 @@ inline std::string TreeManip<T>::makeNewick(unsigned ndecimals) const
 
                     s += ")";
                     s += boost::str(edgelen_format % anc->_edge_length);
+                    //std::cerr << s << std::endl;
                     assert(open_parens > 0);
                     --open_parens;
 					}
                 if (anc->_parent->_parent)
                     {
                     s += ",";
+                    //std::cerr << s << std::endl;
                     }
                 else
                     break;
@@ -964,8 +996,10 @@ inline std::string TreeManip<T>::makeNewick(unsigned ndecimals) const
 			}
 		}
 
+    //std::cerr << "done: " << s << std::endl;
 	return s;
 	}
 }
 
 #endif //defined(GALAX_TREEMANIP_HPP)
+

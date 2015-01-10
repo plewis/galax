@@ -72,10 +72,7 @@ void Galax::processTrees(TreeManip<Node>::TreeManipShPtr tm, unsigned subset_ind
         {
         try
             {
-            if (_rooted)
-                tm->buildFromNewick(*sit);
-            else
-                tm->buildFromNewick(*sit, _outgroup);
+            tm->buildFromNewick(*sit, (_rooted ? 0 : _outgroup));
             tm->addToCCDMap(_ccdmap, subset_index, num_subsets);
             }
         catch(XGalax & x)
@@ -125,10 +122,16 @@ void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, std::string & infos
         ntaxa -= 1;
     double total_entropy = lognrooted(ntaxa);
 
-    infostr = "";
+    infostr = "Order of taxa in split representations:\n";
+    typedef std::pair<unsigned, std::string> translate_map_type;
+    BOOST_FOREACH(const translate_map_type & translate_key_value, _translate)
+        {
+        infostr += boost::str(boost::format("%12d  %s\n") % translate_key_value.first % translate_key_value.second);
+        }
+
     infostr += "\nLindley Information\n";
-    infostr += boost::str(boost::format("  number of taxa: %d\n") % ntaxa);
-    infostr += boost::str(boost::format("  total prior entropy: %.5f\n") % total_entropy);
+    infostr += boost::str(boost::format("  Number of taxa in ingroup: %d\n") % ntaxa);
+    infostr += boost::str(boost::format("  Total prior entropy: %.5f\n") % total_entropy);
 
     Split clade;
 
@@ -512,10 +515,6 @@ void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, std::string & infos
         Split split;
         split.createFromPattern(c._name);
 
-        //temporary!
-        //std::string tmp = split.createPatternRepresentation();
-        //std::cerr << tmp << std::endl;
-
         majrule_splits.push_back(split);
 
         infostr += boost::str(boost::format("%12.5f %12.5f %12.5f %s\n")
@@ -527,7 +526,7 @@ void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, std::string & infos
 
     if (majrule_splits.size() > 0)
         {
-        tm->buildFromSplitVector(majrule_splits, false);
+        tm->buildFromSplitVector(majrule_splits, (_rooted ? 0 : _outgroup));
         majrule_newick = tm->makeNewick(5);
         }
     else
@@ -571,6 +570,9 @@ void Galax::run(std::string treefname, std::string listfname, unsigned skip, boo
 		{
         _outgroup = outgroup_taxon;
         _rooted = rooted;
+        if (!_rooted && _outgroup == 0)
+            throw XGalax("outgroup taxon specified must be a number greater than zero unless trees are rooted (in which case outgroup specification is ignored)");
+
         _treefile_names.clear();
         if (listfname.size() > 0)
             _treefile_names = getTreeFileList(listfname);
@@ -579,9 +581,9 @@ void Galax::run(std::string treefname, std::string listfname, unsigned skip, boo
 
         unsigned ntreefiles = (unsigned)_treefile_names.size();
         if (ntreefiles == 1)
-            _outf << "Read 1 tree file name from list file " << listfname << std::endl;
+            _outf << "Read 1 tree file name from list file " << listfname << "\n";
         else
-            _outf << "Read " << ntreefiles << " tree file names from list file " << listfname << std::endl;
+            _outf << "Read " << ntreefiles << " tree file names from list file " << listfname << "\n";
 
         unsigned n = (unsigned)_treefile_names.size();
         TreeManip<Node>::TreeManipShPtr tm(new TreeManip<Node>());
@@ -601,12 +603,21 @@ void Galax::run(std::string treefname, std::string listfname, unsigned skip, boo
         std::string majrule_newick;
         estimateInfo(tm, infostr, majrule_newick);
         writeMajruleTreefile(majrule_newick);
+
+        if (_rooted)
+            _outf << "Input trees assumed to be rooted\n";
+        else
+            {
+            _outf << "Input trees assumed to be unrooted\n";
+            _outf << boost::str(boost::format("Each input tree was rooted at outgroup taxon %d (\"%s\")\n") % _outgroup % _translate[_outgroup]);
+            }
+
         _outf << "\n" << infostr;
 
         _outf << "\nRequired " << _total_seconds << " total seconds" << std::endl;
         }
 	catch(XGalax x)
 		{
-		std::cerr << "Exception: " << x.what() << std::endl;
+		std::cerr << "ERROR: " << x.what() << std::endl;
 		}
     }
