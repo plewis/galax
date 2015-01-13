@@ -850,7 +850,7 @@ inline void TreeManip<T>::buildFromSplitVector(const std::vector<Split> & split_
             // Create a new node to hold the taxa in the current split
             T * anc = &_tree->_nodes[++curr_node_index];
             anc->_edge_length = 1.0;
-            anc->_edge_support = boost::str(boost::format("w=%.5f I=%.5f D=%.5f ic=%.5f") % s.getWeight() % s.getInfo() % s.getDisparity() % s.getCertainty());
+            anc->_edge_support = boost::str(boost::format("P=%.5f I=%.5f D=%.5f IC=%.5f") % s.getWeight() % s.getInfo() % s.getDisparity() % s.getCertainty());
 
             refreshPreorder(root);
 

@@ -351,6 +351,13 @@ void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap
                         % "D");
                     for (subset_index = 0; subset_index < num_subsets; ++subset_index)
                         {
+                        assert(_treefile_names.size() > 0);
+                        assert(_tree_counts.size() > 0);
+                        assert(clade_Hp.size() > 0);
+                        assert(clade_H.size() > 0);
+                        assert(w.size() > 0);
+                        assert(I.size() > 0);
+                        assert(Ipct.size() > 0);
                         infostr += boost::str(boost::format(indiv_template)
                             % _treefile_names[subset_index]
                             % _tree_counts[subset_index]
@@ -659,9 +666,6 @@ void Galax::buildMajorityRuleTree(std::vector<GalaxInfo> & majrule_info, std::ve
     if (majrule_splits.size() == 0)
         return;
 
-    //temporary!
-    std::cerr << "Here are the splits that are being used to construct the majority rule tree:" << std::endl;
-
     // identify most probable conflicting splits (from annotate_info) for those in majority rule tree
     BOOST_FOREACH(Split & split, majrule_splits)
         {
@@ -692,24 +696,21 @@ void Galax::buildMajorityRuleTree(std::vector<GalaxInfo> & majrule_info, std::ve
                 double ic = 1.0 + (p/(p+q))*log(p/(p+q))/log2 + (q/(p+q))*log(q/(p+q))/log2;
                 split.setCertainty(ic);
                 ic_computed = true;
+                break;
                 }
             }
         assert(split_found);
         if (!ic_computed)
             {
-            if (split.getWeight() != 1.0)
-                {
-                std::cerr << "*** split.getWeight() = " << split.getWeight() << " *** expecting 1.0 ***" << std::endl;
-                }
             split.setCertainty(1.0);    // no conflicting splits found
             }
 
         //temporary!
-        std::cerr << "  " << split.createPatternRepresentation() << " w = " << split.getWeight() << ", d = " << split.getDisparity() << ", ic = " << split.getCertainty() << std::endl;
+        //std::cerr << "  " << split.createPatternRepresentation() << " w = " << split.getWeight() << ", d = " << split.getDisparity() << ", ic = " << split.getCertainty() << std::endl;
         }
 
     //temporary!
-    std::cerr << std::endl;
+    //std::cerr << std::endl;
 
     TreeManip<Node>::TreeManipShPtr tm(new TreeManip<Node>());
     tm->buildFromSplitVector(majrule_splits, (_rooted ? 0 : _outgroup));
@@ -768,6 +769,8 @@ void Galax::run(std::string treefname, std::string listfname, unsigned skip, boo
             else if (_treefile_names.size() == 1)
                 throw XGalax("use --treefile (not --listfile) if there is only one tree file to process");
             }
+        else
+            _treefile_names.push_back(treefname);
 
         std::string infostr;
         TreeManip<Node>::TreeManipShPtr tm(new TreeManip<Node>());
@@ -818,7 +821,7 @@ void Galax::run(std::string treefname, std::string listfname, unsigned skip, boo
             _outf << "Read 1 tree file name from tree file " << treefname << "\n";
 
             getTreesFromFile(treefname, skip);
-            processTrees(tm, _ccdlist, 0, 1);
+            processTrees(tm, _ccdtree, 0, 1);
 
             std::vector<GalaxInfo> majrule_clade_info;
             std::vector<Split> majrule_splits;
