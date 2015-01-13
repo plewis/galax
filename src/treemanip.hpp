@@ -60,6 +60,7 @@ class TreeManip
 
     protected:
 
+        unsigned                                        countNewickLeaves(const std::string newick);
         void                                            extractNodeNumberFromName(T * nd, std::set<unsigned> & used);
         void                                            refreshPreorder(T * root_node = 0);
         void                                            rerootHelper(T * m, T * t);
@@ -468,6 +469,15 @@ inline void TreeManip<T>::addToCCDMap(CCDMapType & ccdmap, unsigned subset_index
     }
 
 #define QUICK_AND_DIRTY_NODE_NUMBERS
+
+template <class T>
+inline unsigned TreeManip<T>::countNewickLeaves(const std::string newick)
+    {
+    boost::regex taxonexpr("[(,]\\s*(\\d+|\\S+?|['].+?['])\\s*(?=[,):])");
+    boost::sregex_iterator m1(newick.begin(), newick.end(), taxonexpr);
+    boost::sregex_iterator m2;
+    return (unsigned)std::distance(m1, m2);
+    }
 
 template <class T>
 inline void TreeManip<T>::buildFromNewick(const std::string newick, unsigned root_at)

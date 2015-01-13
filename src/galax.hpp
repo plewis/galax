@@ -35,6 +35,8 @@ class Galax
         void                                writeMajruleTreefile(std::string fnprefix, std::string & majrule_newick);
         void                                processTrees(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap, unsigned subset_index, unsigned num_subsets);
         void                                getTreesFromFile(std::string treefname, unsigned skip);
+        bool                                parseTranslate(const std::string & file_contents);
+        void                                getNewicks(std::vector< std::string > & tree_descriptions, const std::string & file_contents, unsigned skip);
         std::vector<std::string>            getTreeFileList(std::string listfname);
 
     private:

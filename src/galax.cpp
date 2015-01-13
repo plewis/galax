@@ -7,6 +7,7 @@
 //
 
 #include <fstream>
+#include <limits>
 #include <boost/format.hpp>
 #include "galax.hpp"
 #include "galaxutil.hpp"
@@ -14,7 +15,7 @@
 
 using namespace galax;
 
-const unsigned Galax::_ALLSUBSETS = (unsigned)-1;
+const unsigned Galax::_ALLSUBSETS = std::numeric_limits<unsigned>::max();
 
 Galax::Galax(const std::string outfile_prefix)
     {
@@ -34,7 +35,7 @@ void Galax::getTreesFromFile(std::string treefname, unsigned skip)
 
     std::string file_contents;
     getFileContents(file_contents, treefname);
-    bool complete = parseTranslate(_translate, file_contents);
+    bool complete = parseTranslate(file_contents);
     if (!complete)
         throw XGalax(boost::str(boost::format("File %s contains a different number of taxa than other files. Galax requires taxa to be the same for all tree files processed.") % treefname));
 
@@ -65,6 +66,86 @@ std::vector<std::string> Galax::getTreeFileList(std::string listfname)
     return tree_file_names;
     }
 
+bool Galax::parseTranslate(const std::string & file_contents)
+    {
+    unsigned prev_ntaxa = (unsigned)_translate.size();
+
+    // Will either add to an empty _translate or check values if _translate has been created previously
+
+    // This set will contain the taxon index of all taxa encountered in translate statement. It should have the
+    // same number of elements as _translate has keys when done, otherwise this file lacks one or more taxa
+    std::vector<unsigned> taxa_seen;
+
+    // First, separate out the contents of the translate statement from the rest of the tree file
+    std::string translate_contents;
+    boost::regex pattern("[Tt]ranslate(.+?);");
+    boost::smatch what;
+    bool regex_ok = boost::regex_search(file_contents, what, pattern);
+    if (regex_ok)
+        {
+        // what[0] contains the whole string
+        // what[1] contains the translate statement contents
+        // Construct a string using characters in contents from what[1].first to what[1].second
+        translate_contents.insert(translate_contents.begin(), what[1].first, what[1].second);
+        }
+    else
+        {
+        throw XGalax("regex failed to find translate statement in tree file");
+        }
+
+    // Now create the map by iterating through each element of the translate statement
+    boost::regex re("(\\d+)\\s+'?(.+?)'?,?$");
+    boost::sregex_iterator m1(translate_contents.begin(), translate_contents.end(), re);
+    boost::sregex_iterator m2;
+    for (; m1 != m2; ++m1)
+        {
+        const boost::match_results<std::string::const_iterator>& what = *m1;
+        unsigned taxon_index = 0;
+        try
+            {
+            taxon_index = boost::lexical_cast<unsigned>(what[1].str());
+            }
+        catch(const boost::bad_lexical_cast &)
+            {
+            throw XGalax("Could not interpret taxon index in translate statement as a number");
+            }
+
+        taxa_seen.push_back(taxon_index);
+
+        // efficientAddOrCheck returns valid iterator on first insertion or if identical association already previously made
+        if (efficientAddOrCheck(_translate, taxon_index, what[2].str()) == _translate.end())
+            throw XGalax(boost::str(boost::format("Taxon name (%s) does not match name already associated (%s) with taxon %d") % what[2].str() % _translate[taxon_index] % taxon_index));
+        }
+
+    // Check to make sure this file does not have one or more additional taxa than files previously processed
+    if (prev_ntaxa > 0 && prev_ntaxa < _translate.size())
+        return false;
+
+    // Check to make sure this file does not have one or more fewer taxa than files previously processed
+    if (taxa_seen.size() < _translate.size())
+       return false;
+
+    return true;
+    }
+
+void Galax::getNewicks(std::vector< std::string > & tree_descriptions, const std::string & file_contents, unsigned skip)
+    {
+    // tree STATE_0 [&lnP=-4493.80476846934,posterior=-4493.80476846934] = [&R] (9:[&rate=0.49971158909783764]1851.4724462198697,((1:[&rate=0.5965730394621352]292.73199858783727,(10:[&rate=0.6588031360335018]30.21172743645451,5:[&rate=0.7098036299867017]30.21172743645451):[&rate=1.0146941544458208]262.52027115138276):[&rate=1.0649642758561977]510.452441519872,((8:[&rate=0.7554924641162211]145.1076605992074,(7:[&rate=0.7984750329147966]64.0435017480143,6:[&rate=0.8402528958963882]64.0435017480143):[&rate=1.1206854064651213]81.06415885119311):[&rate=1.1844450597679457]522.823827314411,((3:[&rate=0.8818808237868384]60.2962343089954,4:[&rate=0.9242396697890951]60.2962343089954):[&rate=1.260685743226102]12.793802911399744,2:[&rate=0.9681896872253556]73.09003722039515):[&rate=1.3582802932633053]594.8414506932232):[&rate=1.4999660689010508]135.25295219409088):[&rate=1.7907115550989796]1048.2880061121605);
+    tree_descriptions.clear();
+    boost::regex re("^\\s*[Tt]ree.+?(\\(.+?\\))\\s*;\\s*$");
+    boost::sregex_iterator m1(file_contents.begin(), file_contents.end(), re);
+    boost::sregex_iterator m2;  // empty iterator used only to detect when we are done
+    unsigned n = 0;
+    for (; m1 != m2; ++m1)
+        {
+        const boost::match_results<std::string::const_iterator>& what = *m1;
+        if (n >= skip)
+            {
+            tree_descriptions.push_back( stripComments( what[1].str() ) );
+            }
+        n += 1;
+        }
+    }
 
 void Galax::processTrees(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap, unsigned subset_index, unsigned num_subsets)
     {
@@ -608,6 +689,7 @@ void Galax::writeMajruleTreefile(std::string fnprefix, std::string & majrule_new
 
 void Galax::run(std::string treefname, std::string listfname, unsigned skip, bool rooted, unsigned outgroup_taxon)
     {
+    assert (_ALLSUBSETS == (unsigned)(-1));
 	try
 		{
         _outgroup = outgroup_taxon;
