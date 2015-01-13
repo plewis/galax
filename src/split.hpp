@@ -111,6 +111,9 @@ class Split
         void                            setCertainty(double ic);
         double                          getCertainty() const;
 
+        void                            setDisparity(double d);
+        double                          getDisparity() const;
+
 	private:
 
 		void 				            resize();
@@ -130,6 +133,7 @@ class Split
         double                          _info;              //!< is the split info (e.g. lindley information)
         double                          _weight;            //!< is the split weight (e.g. marginal clade posterior probability)
         double                          _certainty;         //!< is the Salichos and Rokas internode certainty measure (not yet calculated and thus invalid if negative)
+        double                          _disparity;         //!< is the split disparity (difference between merged and average information across subsets)
 
 	public:
 		typedef boost::shared_ptr< Split > SplitShPtr;
@@ -164,6 +168,7 @@ inline void Split::clear()
 	{
     _info               = 0.0;
     _weight             = 0.0;
+    _disparity          = 0.0;
     _certainty          = -1.0;  // negative value indicates that the internode certainty has not yet been calculated
     _split_ntax         = 4;
     _nunits             = 1;
@@ -183,6 +188,7 @@ inline void Split::reset()
 	{
     _info = 0.0;
     _weight = 0.0;
+    _disparity = 0.0;
     _certainty = -1.0;  // negative value indicates that the internode certainty has not yet been calculated
     std::fill(_unit.begin(), _unit.end(), (split_t)0);
 	}
@@ -214,6 +220,7 @@ inline void Split::copy(const Split & other)
     _split_ntax		= other._split_ntax;
     _info    		= other._info;
     _weight 		= other._weight;
+    _disparity 		= other._disparity;
     _certainty 		= other._certainty;
     _nunits			= other._nunits;
     _on_symbol		= other._on_symbol;
@@ -712,6 +719,22 @@ inline void Split::setCertainty(double ic)
 inline double Split::getCertainty() const
 	{
     return (_weight < 1.0 ? _certainty : 1.0);
+    }
+
+/**
+*   Sets the split disparity to \c d.
+*/
+inline void Split::setDisparity(double d)
+	{
+    _disparity = d;
+    }
+
+/**
+*   Returns the split disparity.
+*/
+inline double Split::getDisparity() const
+	{
+    return _disparity;
     }
 
 /**

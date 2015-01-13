@@ -516,9 +516,6 @@ inline void TreeManip<T>::buildFromNewick(const std::string newick, unsigned roo
         nd._number = _tree->_nleaves;
         }
         
-	// This will point to the first tip node encountered so that we can reroot at this node before returning
-	T * first_tip = 0;  //TODO: pass in root tip number, this needs to be consistent
-    
     unsigned curr_leaf = 0;
     unsigned num_edge_lengths = 0;
     unsigned curr_node_index = 0;
@@ -655,8 +652,6 @@ inline void TreeManip<T>::buildFromNewick(const std::string newick, unsigned roo
                         extractNodeNumberFromName(nd, used);
 #endif
                         curr_leaf++;
-						if (!first_tip)
-							first_tip = nd;
 						}
 
 					previous = Prev_Tok_Name;
@@ -717,8 +712,6 @@ inline void TreeManip<T>::buildFromNewick(const std::string newick, unsigned roo
                             extractNodeNumberFromName(nd, used);
 #endif
                             curr_leaf++;
-							if (!first_tip)
-								first_tip = nd;
 							}
 
 						previous = Prev_Tok_Name;
@@ -857,7 +850,7 @@ inline void TreeManip<T>::buildFromSplitVector(const std::vector<Split> & split_
             // Create a new node to hold the taxa in the current split
             T * anc = &_tree->_nodes[++curr_node_index];
             anc->_edge_length = 1.0;
-            anc->_edge_support = boost::str(boost::format("w=%.5f I=%.5f ic=%.5f") % s.getWeight() % s.getInfo() % s.getCertainty());
+            anc->_edge_support = boost::str(boost::format("w=%.5f I=%.5f D=%.5f ic=%.5f") % s.getWeight() % s.getInfo() % s.getDisparity() % s.getCertainty());
 
             refreshPreorder(root);
 

@@ -189,7 +189,7 @@ void Galax::showCCDMap(CCDMapType & ccdmap, unsigned subset_index)
         }
     }
 
-void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap, std::string & infostr, std::string & majrule_newick)
+void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap, std::string & infostr, std::vector<GalaxInfo> & clade_info)
     {
     _start_time = getCurrentTime();
 
@@ -217,15 +217,20 @@ void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap
     infostr += boost::str(boost::format("  Total prior entropy: %.5f\n") % total_entropy);
 
     Split clade;
+    clade_info.clear();
 
-    std::vector<GalaxInfo> clade_info;
-
+    // These vectors store information for one particular clade for each subset plus the merged case
+    // All of these vectors are reinitialized for every new clade: not currently storing all information
+    // for every subset-clade combination
     std::vector<double> clade_H(num_subsets+1, 0.0);
     std::vector<double> clade_Hp(num_subsets+1, 0.0);
     std::vector<double> clade_denom(num_subsets+1, 0.0);
     std::vector<double> w(num_subsets+1, 0.0);
     std::vector<double> I(num_subsets+1, 0.0);
     std::vector<double> Ipct(num_subsets+1, 0.0);
+
+    // This vector holds cumulative I across clades for each subset plus the merged case
+    // It is not reset for each clade
     std::vector<double> total_I(num_subsets+1, 0.0);
 
     double total_D = 0.0;
@@ -331,7 +336,7 @@ void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap
                 double D = (sum_Ipct/num_subsets) - Ipct[num_subsets];
                 total_D += D;
 
-                if (I[num_subsets] > 0.0)
+                if (I[num_subsets] > 0.0)   // don't bother outputting numbers for clades with no information
                     {
                     infostr += boost::str(boost::format("\nClade %s\n") % clade.createPatternRepresentation());
                     infostr += boost::str(boost::format("%20s %12s %12s %12s %12s %12s %12s %12s %12s\n")
@@ -585,50 +590,19 @@ void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap
         % "clade");
     cumpct = 0.0;
     double log2 = log(2.0);
-    std::vector<Split> majrule_splits;
-    //std::cerr << "\n\n******* enumerating splits *******" << std::endl; //temporary!
     BOOST_FOREACH(GalaxInfo & c, clade_info)
         {
         double info = c._value[0];
         double diff = c._value[1];
         double w    = c._value[2];
 
-        Split split;
-        split.createFromPattern(c._name);
-        split.setInfo(info);
-        split.setWeight(w);
-        //std::cerr << c._name << " w = " << w << std::endl; //temporary!
-
         if (w >= 0.5)
             {
-            // add split to vector used to construct majority-rule tree for merged case
-            majrule_splits.push_back(split);
-
             infostr += boost::str(boost::format("%12.5f %12.5f %12.5f %s\n")
                 % w
                 % info
                 % diff
                 % c._name);
-            }
-        else if (majrule_splits.size() > 0)
-            {
-            // identify most probable conflicting splits for those in majority rule tree
-            BOOST_FOREACH(Split & s, majrule_splits)
-                {
-                // pass on split s if its internet certainty has already been computed
-                if (s.getCertainty() > 0.0)
-                    continue;
-
-                if (!s.isCompatible(split))
-                    {
-                    // calculate internode certainty
-                    double p = s.getWeight();
-                    double q = w;
-                    double ic = 1.0 + (p/(p+q))*log(p/(p+q))/log2 + (q/(p+q))*log(q/(p+q))/log2;
-                    s.setCertainty(ic);
-                    //std::cerr << "-->" << s.createPatternRepresentation() << " p = " << p << ", q = " << q << ", ic = " << s.getCertainty() << std::endl; //temporary!
-                    }
-                }
             }
         }
 
@@ -639,21 +613,107 @@ void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap
         infostr += boost::str(boost::format("%12d  %s\n") % translate_key_value.first % translate_key_value.second);
         }
 
-    if (majrule_splits.size() > 0)
+    _end_time = getCurrentTime();
+    _total_seconds += secondsElapsed(_start_time, _end_time);
+    }
+
+void Galax::buildMajorityRuleTree(std::vector<GalaxInfo> & majrule_info, std::vector<GalaxInfo> & annotate_info, std::string & majrule_newick)
+    {
+    _start_time = getCurrentTime();
+
+    majrule_newick.clear();
+
+    // We can save a lot of computation if both info vectors are the same
+    bool same_info = (&majrule_info == &annotate_info);
+
+    // Ensure that both majrule_info and annotate_info are sorted so that the clades with highest posterior are first
+    GalaxInfo::_sortby_index = 2;
+    std::sort(majrule_info.begin(), majrule_info.end(), std::greater<GalaxInfo>());
+    if (!same_info)
+        std::sort(annotate_info.begin(), annotate_info.end(), std::greater<GalaxInfo>());
+
+    // Go through all clades in majrule_info and store splits with w > 0.5
+    double log2 = log(2.0);
+    std::vector<Split> majrule_splits;
+    BOOST_FOREACH(GalaxInfo & c, majrule_info)
         {
-         //temporary!
-        std::cerr << "\n\nHere are the splits that are being used to construct the majority rule tree:" << std::endl;
-        BOOST_FOREACH(Split & s, majrule_splits)
+        double w    = c._value[2];
+
+        Split split;
+        split.createFromPattern(c._name);
+
+        if (w < 0.5)
             {
-            std::cerr << "  " << s.createPatternRepresentation() << " w = " << s.getWeight() << ", ic = " << s.getCertainty() << std::endl;
+            // majrule_info is sorted by w, so we can stop once we pass the 0.5 point
+            break;
             }
-        std::cerr << "\n" << std::endl;
-        
-        tm->buildFromSplitVector(majrule_splits, (_rooted ? 0 : _outgroup));
-        majrule_newick = tm->makeNewick(5, true);
+        else
+            {
+            // Add split to vector used to construct majority-rule tree
+            majrule_splits.push_back(split);
+            }
         }
-    else
-        majrule_newick = "";
+
+    // Have now found all the splits comprising the majority rule tree but still
+    // need to annotate each of these splits.
+    if (majrule_splits.size() == 0)
+        return;
+
+    //temporary!
+    std::cerr << "Here are the splits that are being used to construct the majority rule tree:" << std::endl;
+
+    // identify most probable conflicting splits (from annotate_info) for those in majority rule tree
+    BOOST_FOREACH(Split & split, majrule_splits)
+        {
+        bool split_found = false;
+        bool ic_computed = false;
+        BOOST_FOREACH(GalaxInfo & c, annotate_info)
+            {
+            Split asplit;
+            asplit.createFromPattern(c._name);
+            asplit.setWeight(c._value[2]);
+            if (split == asplit)
+                {
+                double info = c._value[0];
+                double d    = c._value[1];
+                double w    = c._value[2];
+
+                split.setInfo(info);
+                split.setWeight(w);
+                split.setDisparity(d);
+
+                split_found = true;
+                }
+            else if (split_found && !asplit.isCompatible(split))
+                {
+                // calculate internode certainty
+                double p = split.getWeight();
+                double q = asplit.getWeight();
+                double ic = 1.0 + (p/(p+q))*log(p/(p+q))/log2 + (q/(p+q))*log(q/(p+q))/log2;
+                split.setCertainty(ic);
+                ic_computed = true;
+                }
+            }
+        assert(split_found);
+        if (!ic_computed)
+            {
+            if (split.getWeight() != 1.0)
+                {
+                std::cerr << "*** split.getWeight() = " << split.getWeight() << " *** expecting 1.0 ***" << std::endl;
+                }
+            split.setCertainty(1.0);    // no conflicting splits found
+            }
+
+        //temporary!
+        std::cerr << "  " << split.createPatternRepresentation() << " w = " << split.getWeight() << ", d = " << split.getDisparity() << ", ic = " << split.getCertainty() << std::endl;
+        }
+
+    //temporary!
+    std::cerr << std::endl;
+
+    TreeManip<Node>::TreeManipShPtr tm(new TreeManip<Node>());
+    tm->buildFromSplitVector(majrule_splits, (_rooted ? 0 : _outgroup));
+    majrule_newick = tm->makeNewick(5, true);
 
     _end_time = getCurrentTime();
     _total_seconds += secondsElapsed(_start_time, _end_time);
@@ -710,8 +770,6 @@ void Galax::run(std::string treefname, std::string listfname, unsigned skip, boo
             }
 
         std::string infostr;
-        std::string majrule_tree;
-        std::string majrule_merged;
         TreeManip<Node>::TreeManipShPtr tm(new TreeManip<Node>());
         if (is_treefile && is_listfile)
             {
@@ -724,7 +782,11 @@ void Galax::run(std::string treefname, std::string listfname, unsigned skip, boo
             // process --treefile and construct majrule consensus tree
             getTreesFromFile(treefname, skip);
             processTrees(tm, _ccdtree, 0, 1);
-            estimateInfo(tm, _ccdtree, infostr, majrule_tree);
+            std::vector<GalaxInfo> majrule_clade_info;
+            std::vector<Split> majrule_splits;
+            std::string majrule_tree;
+            estimateInfo(tm, _ccdtree, infostr, majrule_clade_info);
+            buildMajorityRuleTree(majrule_clade_info, majrule_clade_info, majrule_tree);
             writeMajruleTreefile("majrule", majrule_tree);
 
             // process --listfile and construct majrule consensus tree for merged trees
@@ -736,8 +798,17 @@ void Galax::run(std::string treefname, std::string listfname, unsigned skip, boo
                 getTreesFromFile(tree_file_name, skip);
                 processTrees(tm, _ccdlist, subset_index++, (unsigned)_treefile_names.size());
                 }
-            estimateInfo(tm, _ccdlist, infostr, majrule_merged);
-            writeMajruleTreefile("majrule-merged", majrule_merged);
+            std::vector<GalaxInfo> merged_clade_info;
+            std::vector<Split> merged_splits;
+            std::string merged_tree;
+            estimateInfo(tm, _ccdlist, infostr, merged_clade_info);
+            buildMajorityRuleTree(merged_clade_info, merged_clade_info, merged_tree);
+            writeMajruleTreefile("merged", merged_tree);
+
+            // finally, add information content from --listfile tree files onto majority rule tree derived from --treefile
+            std::string majrule_merged_tree;
+            buildMajorityRuleTree(majrule_clade_info, merged_clade_info, majrule_merged_tree);
+            writeMajruleTreefile("majrule-merged", majrule_merged_tree);
             }
         else if (is_treefile)
             {
@@ -748,7 +819,12 @@ void Galax::run(std::string treefname, std::string listfname, unsigned skip, boo
 
             getTreesFromFile(treefname, skip);
             processTrees(tm, _ccdlist, 0, 1);
-            estimateInfo(tm, _ccdlist, infostr, majrule_tree);
+
+            std::vector<GalaxInfo> majrule_clade_info;
+            std::vector<Split> majrule_splits;
+            std::string majrule_tree;
+            estimateInfo(tm, _ccdtree, infostr, majrule_clade_info);
+            buildMajorityRuleTree(majrule_clade_info, majrule_clade_info, majrule_tree);
             writeMajruleTreefile("majrule", majrule_tree);
             }
         else
@@ -764,8 +840,12 @@ void Galax::run(std::string treefname, std::string listfname, unsigned skip, boo
                 getTreesFromFile(tree_file_name, skip);
                 processTrees(tm, _ccdlist, subset_index++, (unsigned)_treefile_names.size());
                 }
-            estimateInfo(tm, _ccdlist, infostr, majrule_merged);
-            writeMajruleTreefile("majrule-merged", majrule_merged);
+            std::vector<GalaxInfo> merged_clade_info;
+            std::vector<Split> merged_splits;
+            std::string merged_tree;
+            estimateInfo(tm, _ccdlist, infostr, merged_clade_info);
+            buildMajorityRuleTree(merged_clade_info, merged_clade_info, merged_tree);
+            writeMajruleTreefile("merged", merged_tree);
             }
 
         if (_rooted)
