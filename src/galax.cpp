@@ -34,7 +34,9 @@ void Galax::getTreesFromFile(std::string treefname, unsigned skip)
 
     std::string file_contents;
     getFileContents(file_contents, treefname);
-    parseTranslate(_translate, file_contents);
+    bool complete = parseTranslate(_translate, file_contents);
+    if (!complete)
+        throw XGalax(boost::str(boost::format("File %s contains a different number of taxa than other files. Galax requires taxa to be the same for all tree files processed.") % treefname));
 
     std::vector< std::string > tree_descriptions;
     getNewicks(tree_descriptions, file_contents, skip);
@@ -501,28 +503,52 @@ void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap
         % "D"
         % "clade");
     cumpct = 0.0;
+    double log2 = log(2.0);
     std::vector<Split> majrule_splits;
+    //std::cerr << "\n\n******* enumerating splits *******" << std::endl; //temporary!
     BOOST_FOREACH(GalaxInfo & c, clade_info)
         {
         double info = c._value[0];
         double diff = c._value[1];
         double w    = c._value[2];
 
-        if (w < 0.5)
-            break;
-
-        // add split to vector used to construct majority-rule tree for merged case
         Split split;
         split.createFromPattern(c._name);
+        split.setInfo(info);
         split.setWeight(w);
+        //std::cerr << c._name << " w = " << w << std::endl; //temporary!
 
-        majrule_splits.push_back(split);
+        if (w >= 0.5)
+            {
+            // add split to vector used to construct majority-rule tree for merged case
+            majrule_splits.push_back(split);
 
-        infostr += boost::str(boost::format("%12.5f %12.5f %12.5f %s\n")
-            % w
-            % info
-            % diff
-            % c._name);
+            infostr += boost::str(boost::format("%12.5f %12.5f %12.5f %s\n")
+                % w
+                % info
+                % diff
+                % c._name);
+            }
+        else if (majrule_splits.size() > 0)
+            {
+            // identify most probable conflicting splits for those in majority rule tree
+            BOOST_FOREACH(Split & s, majrule_splits)
+                {
+                // pass on split s if its internet certainty has already been computed
+                if (s.getCertainty() > 0.0)
+                    continue;
+
+                if (!s.isCompatible(split))
+                    {
+                    // calculate internode certainty
+                    double p = s.getWeight();
+                    double q = w;
+                    double ic = 1.0 + (p/(p+q))*log(p/(p+q))/log2 + (q/(p+q))*log(q/(p+q))/log2;
+                    s.setCertainty(ic);
+                    //std::cerr << "-->" << s.createPatternRepresentation() << " p = " << p << ", q = " << q << ", ic = " << s.getCertainty() << std::endl; //temporary!
+                    }
+                }
+            }
         }
 
     infostr += "\nOrder of taxa in split representations:\n";
@@ -534,6 +560,14 @@ void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap
 
     if (majrule_splits.size() > 0)
         {
+         //temporary!
+        std::cerr << "\n\nHere are the splits that are being used to construct the majority rule tree:" << std::endl;
+        BOOST_FOREACH(Split & s, majrule_splits)
+            {
+            std::cerr << "  " << s.createPatternRepresentation() << " w = " << s.getWeight() << ", ic = " << s.getCertainty() << std::endl;
+            }
+        std::cerr << "\n" << std::endl;
+        
         tm->buildFromSplitVector(majrule_splits, (_rooted ? 0 : _outgroup));
         majrule_newick = tm->makeNewick(5, true);
         }
@@ -614,6 +648,7 @@ void Galax::run(std::string treefname, std::string listfname, unsigned skip, boo
             // process --listfile and construct majrule consensus tree for merged trees
             // note: infostr is overwritten
             unsigned subset_index = 0;
+            _tree_counts.clear();
             BOOST_FOREACH(std::string & tree_file_name, _treefile_names)
                 {
                 getTreesFromFile(tree_file_name, skip);

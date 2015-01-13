@@ -122,7 +122,7 @@ inline std::string TreeManip<T>::debugDescribeNode(T * node) const
     // Show other info about node
     s += boost::str(boost::format("\n  _number: %d") % nd._number);
     s += boost::str(boost::format("\n  _edge_length: %g") % nd._edge_length);
-    s += boost::str(boost::format("\n  _edge_support: %g") % nd._edge_support);
+    s += boost::str(boost::format("\n  _edge_support: %s") % nd._edge_support);
     return s;
     }
 
@@ -394,7 +394,7 @@ inline T * TreeManip<T>::rerootAt(int node_index)
 		{
 		// Begin by swapping the mover's edge length with nd's edge length
         double tmp_edgelen = m->_edge_length;
-        double tmp_edgesup = m->_edge_support;
+        std::string tmp_edgesup = m->_edge_support;
         m->_edge_length = nd._edge_length;
         nd._edge_length = tmp_edgelen;
         nd._edge_support = tmp_edgesup;
@@ -760,7 +760,7 @@ inline void TreeManip<T>::buildStarTree(unsigned nleaves, unsigned root_at)
         unsigned curr_tip_number = 0;
         T * root = &_tree->_nodes[curr_node_index];
         root->_edge_length = 1.0;
-        root->_edge_support = 0.0;
+        root->_edge_support = "";
         if (!rooted)
             root->_number = root_at - 1;
 
@@ -768,7 +768,7 @@ inline void TreeManip<T>::buildStarTree(unsigned nleaves, unsigned root_at)
         root->_left_child = hub;
         hub->_parent = root;
         hub->_edge_length = 1.0;
-        hub->_edge_support = 0.0;
+        hub->_edge_support = "";
         hub->_number = nleaves;
 
         for (unsigned i = (rooted ? 0 : 1); i < nleaves; ++i)
@@ -777,7 +777,7 @@ inline void TreeManip<T>::buildStarTree(unsigned nleaves, unsigned root_at)
             nd->_right_sib = hub->_left_child;
             nd->_parent = hub;
             nd->_edge_length = 1.0;
-            nd->_edge_support = 0.0;
+            nd->_edge_support = "";
             if (!rooted && curr_tip_number == root_at - 1)
                 curr_tip_number++;
             nd->_number = curr_tip_number++;
@@ -847,7 +847,7 @@ inline void TreeManip<T>::buildFromSplitVector(const std::vector<Split> & split_
             // Create a new node to hold the taxa in the current split
             T * anc = &_tree->_nodes[++curr_node_index];
             anc->_edge_length = 1.0;
-            anc->_edge_support = s.getWeight();
+            anc->_edge_support = boost::str(boost::format("w=%.5f I=%.5f ic=%.5f") % s.getWeight() % s.getInfo() % s.getCertainty());
 
             refreshPreorder(root);
 
@@ -925,7 +925,7 @@ inline std::string TreeManip<T>::makeNewick(unsigned ndecimals, bool edge_suppor
     {
 	bool rooted = _tree->_is_rooted;
     boost::format edgelen_format(boost::str(boost::format(":%%.%df") % ndecimals));
-    boost::format edgelen_support_format(boost::str(boost::format("%%.%df:%%.%df") % ndecimals % ndecimals));
+    boost::format edgelen_support_format(boost::str(boost::format("\"%%s\":%%.%df") % ndecimals));
 
     std::string s = "(";
     //std::cerr << s << std::endl;

@@ -160,9 +160,15 @@ inline void extractAllWhitespaceDelimitedStrings(std::vector<std::string> & rece
         }
     }
 
-inline void parseTranslate(std::map< unsigned, std::string > & translate_map, const std::string & file_contents)
+inline bool parseTranslate(std::map< unsigned, std::string > & translate_map, const std::string & file_contents)
     {
+    unsigned prev_ntaxa = (unsigned)translate_map.size();
+
     // Will either add to an empty translate_map or check values if translate_map has been created previously
+
+    // This set will contain the taxon index of all taxa encountered in translate statement. It should have the
+    // same number of elements as _translate has keys when done, otherwise this file lacks one or more taxa
+    std::vector<unsigned> taxa_seen;
 
     // First, separate out the contents of the translate statement from the rest of the tree file
     std::string translate_contents;
@@ -198,10 +204,22 @@ inline void parseTranslate(std::map< unsigned, std::string > & translate_map, co
             throw XGalax("Could not interpret taxon index in translate statement as a number");
             }
 
+        taxa_seen.push_back(taxon_index);
+
         // efficientAddOrCheck returns valid iterator on first insertion or if identical association already previously made
         if (efficientAddOrCheck(translate_map, taxon_index, what[2].str()) == translate_map.end())
             throw XGalax(boost::str(boost::format("Taxon name (%s) does not match name already associated (%s) with taxon %d") % what[2].str() % translate_map[taxon_index] % taxon_index));
         }
+
+    // Check to make sure this file does not have one or more additional taxa than files previously processed
+    if (prev_ntaxa > 0 && prev_ntaxa < translate_map.size())
+        return false;
+
+    // Check to make sure this file does not have one or more fewer taxa than files previously processed
+    if (taxa_seen.size() < translate_map.size())
+       return false;
+
+    return true;
     }
 
 inline std::string stripComments(const std::string & commented_nexus_text)

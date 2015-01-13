@@ -37,7 +37,7 @@ namespace galax
 		int                 _number;
 		std::string         _name;
 		double              _edge_length;
-		double              _edge_support;
+		std::string         _edge_support;
         Split               _split;
 	};
 
@@ -59,7 +59,6 @@ namespace galax
 		_parent = 0;
 		_number = 0;
 		_edge_length = 0.0;
-		_edge_support = 0.0;
 	}
 
 }

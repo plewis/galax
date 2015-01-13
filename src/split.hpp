@@ -102,9 +102,15 @@ class Split
 
 		void 				            invertSplit();
 
+        void                            setInfo(double info);
+        double                          getInfo() const;
+
         void                            setWeight(double w);
         double                          getWeight() const;
-			
+
+        void                            setCertainty(double ic);
+        double                          getCertainty() const;
+
 	private:
 
 		void 				            resize();
@@ -121,8 +127,10 @@ class Split
 		char			                _off_symbol;		//!< is the symbol used to represent bits that have been cleared (i.e. "off")
 		char			                _excl_symbol;       //!< is the symbol used to represent bits that have been excluded (i.e. should not be considered off or on)
         std::vector<unsigned>           _excl_bits;         //!< is a sorted vector containing bit positions corresponding to excluded taxa (lowest possible value is 0)
+        double                          _info;              //!< is the split info (e.g. lindley information)
         double                          _weight;            //!< is the split weight (e.g. marginal clade posterior probability)
-        
+        double                          _certainty;         //!< is the Salichos and Rokas internode certainty measure (not yet calculated and thus invalid if negative)
+
 	public:
 		typedef boost::shared_ptr< Split > SplitShPtr;
 	};
@@ -147,11 +155,16 @@ inline Split::Split()
 	}
 
 /**
+*   The clear function clears everything, returning the split object to its just constructed state.
+*   Use the reset function to clear only the #_unit vector.
 *   Sets #_split_ntax, #_nunits, #_on_symbol, #_off_symbol, #_excl_symbol to default values and
 *   resizes the #_units vector to have a length of #_nunits and fills it with 0s.
 */
 inline void Split::clear()
 	{
+    _info               = 0.0;
+    _weight             = 0.0;
+    _certainty          = -1.0;  // negative value indicates that the internode certainty has not yet been calculated
     _split_ntax         = 4;
     _nunits             = 1;
     _on_symbol          = '*';
@@ -168,6 +181,9 @@ inline void Split::clear()
 */
 inline void Split::reset()
 	{
+    _info = 0.0;
+    _weight = 0.0;
+    _certainty = -1.0;  // negative value indicates that the internode certainty has not yet been calculated
     std::fill(_unit.begin(), _unit.end(), (split_t)0);
 	}
 
@@ -196,7 +212,9 @@ inline Split::Split(const Split & other)
 inline void Split::copy(const Split & other)
 	{
     _split_ntax		= other._split_ntax;
+    _info    		= other._info;
     _weight 		= other._weight;
+    _certainty 		= other._certainty;
     _nunits			= other._nunits;
     _on_symbol		= other._on_symbol;
     _off_symbol		= other._off_symbol;
@@ -649,6 +667,22 @@ inline void Split::setBit(unsigned t)
 	}
 
 /**
+*   Sets the split info to \c info.
+*/
+inline void Split::setInfo(double info)
+	{
+    _info = info;
+    }
+
+/**
+*   Returns the split weight.
+*/
+inline double Split::getInfo() const
+	{
+    return _info;
+    }
+
+/**
 *   Sets the split weight to \c w.
 */
 inline void Split::setWeight(double w)
@@ -662,6 +696,22 @@ inline void Split::setWeight(double w)
 inline double Split::getWeight() const
 	{
     return _weight;
+    }
+
+/**
+*   Sets the split certainty to \c ic.
+*/
+inline void Split::setCertainty(double ic)
+	{
+    _certainty = ic;
+    }
+
+/**
+*   Returns the split certainty.
+*/
+inline double Split::getCertainty() const
+	{
+    return (_weight < 1.0 ? _certainty : 1.0);
     }
 
 /**
@@ -737,17 +787,73 @@ inline bool Split::subsumedIn(const Split & other, unsigned start_unit) const
 *       split b: ----***--*
 *         a & b: ----------
 *
-*   are compatible, because a & b = 0. The two splits below are also compatible because a & b == b:
+*   are compatible, because a & b = 0. There is another way to define compatibility. If one of the following sets is empty, then
+*   the splits a and b are compatible: a* & b*, a* & b-, a- & b*, a- & b-. For splits a and b above, we have
+*
+*             a: -***---*--
+*             b: ----***--*
+*       a* & b*: ----------
+*
+*             a: -***---*--
+*         not b: ****---**-
+*       a* & b-: -***---*--
+*
+*         not a: *---***-**
+*             b: ----***--*
+*       a- & b*: ----***--*
+*
+*         not a: *---***-**
+*         not b: ****---**-
+*       a- & b-: *-------*-
+*
+*   The two splits below are also compatible because a & b == b:
 *
 *       split a: -****-*---
 *       split b: --**--*--- <-
 *         a & b: --**--*--- <-
+*   
+*   Using the alternative definition:
+*
+*             a: -****-*---
+*             b: --**--*---
+*       a* & b*: --**--*---
+*
+*             a: -****-*---
+*         not b: **--**-***
+*       a* & b-: -*--*-----
+*
+*         not a: *----*-***
+*             b: --**--*---
+*       a- & b*: ---------- <-
+*
+*         not a: *----*-***
+*         not b: **--**-***
+*       a- & b-: *----*-***
 *
 *   These two splits, on the other hand, are not compatible because a & b != 0 and is not equal to either a or b:
 *
 *       split a: -***---*--
 *       split b: ---***---*
 *         a & b: ---*------
+*
+*   Using the alternative definition:
+*
+*             a: -***---*--
+*             b: ---***---*
+*       a* & b*: ---*------
+*
+*             a: -***---*--
+*         not b: ***---***-
+*       a* & b-: -**----*--
+*
+*         not a: *---***-**
+*             b: ---***---*
+*       a- & b*: ----**---*
+*
+*         not a: *---***-**
+*         not b: ***---***-
+*       a- & b-: *-----*-*-
+*
 */
 inline bool Split::isCompatible(const Split & other) const
 	{
