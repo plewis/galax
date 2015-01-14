@@ -50,7 +50,7 @@ void processCommandLineOptions(int argc, const char * argv[])
     boost::program_options::store(boost::program_options::parse_command_line(argc, argv, desc), vm);
     try
         {
-        const boost::program_options::parsed_options & parsed = boost::program_options::parse_config_file< char >("galax.conf", desc, false);  // 3rd. argument = allow unrecognized options
+        const boost::program_options::parsed_options & parsed = boost::program_options::parse_config_file< char >("galax.conf", desc, true);  // 3rd. argument = allow unrecognized options
         to_pass_further = collect_unrecognized(parsed.options, boost::program_options::include_positional);
         boost::program_options::store(parsed, vm);
         }

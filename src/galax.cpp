@@ -257,6 +257,9 @@ void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap
             assert(v.size() == 1);  // first entry should be an unconditional clade entry
             clade = v[0];
 
+            //temporary!
+            std::cerr << clade.createPatternRepresentation() << " " << (sum_counts/total_trees) << std::endl;
+
             unsigned subset_index = 0;
             BOOST_FOREACH(double subset_count, count)
                 {
@@ -278,6 +281,9 @@ void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap
                 // Conditional clade entry whose parent is clade
                 assert(v.size() == 3); // parent clade, left clade, right clade
 
+                //temporary!
+                std::cerr << "> " << v[1].createPatternRepresentation() << "|" << v[2].createPatternRepresentation() << std::endl;
+
                 // Individual subsets
                 unsigned subset_index = 0;
                 BOOST_FOREACH(double subset_count, count)
@@ -286,7 +292,14 @@ void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap
                         {
                         double p = subset_count/clade_denom[subset_index];
                         clade_H[subset_index] -= p*log(p);
+
+                        //temporary!
+                        std::cerr << "  Hp = " << clade_Hp[subset_index] << " - " << p << "*[lognrooted(" << v[1].countOnBits() << ") + lognrooted(" << v[2].countOnBits() << ")] = ";
+
                         clade_Hp[subset_index] -= p*(lognrooted((v[1].countOnBits())) + lognrooted(v[2].countOnBits()));
+
+                        //temporary!
+                        std::cerr << clade_Hp[subset_index] << std::endl;
                         }
                     ++subset_index;
                     }
@@ -294,6 +307,7 @@ void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap
                 // Merged case
                 double p = sum_counts/clade_denom[num_subsets];
                 clade_H[num_subsets] -= p*log(p);
+
                 clade_Hp[num_subsets] -= p*(lognrooted((v[1].countOnBits())) + lognrooted(v[2].countOnBits()));
                 }
             else
@@ -302,9 +316,10 @@ void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap
                 // information content for the previous clade
 
                 assert(v.size() == 1);
-                unsigned subset_index = 0;
+                //unsigned subset_index = 0;
                 double sum_Ipct = 0.0;
-                BOOST_FOREACH(double subset_count, count)
+                //BOOST_FOREACH(double subset_count, count)
+                for (unsigned subset_index = 0; subset_index < num_subsets; ++subset_index)
                     {
                     // Compute I for previous clade
                     w[subset_index] = clade_denom[subset_index]/_tree_counts[subset_index]; // marginal posterior clade probability
@@ -316,11 +331,11 @@ void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap
                     sum_Ipct += Ipct[subset_index];
 
                     // Initialize data for next clade
-                    clade_Hp[subset_index] = lognrooted(clade.countOnBits());
-                    clade_H[subset_index] = 0.0;
-                    clade_denom[subset_index] = subset_count;
+                    //clade_Hp[subset_index] = lognrooted(clade.countOnBits());   //BUGBUG: clade_Hp[subset_index] initialized here but reported below
+                    //clade_H[subset_index] = 0.0;
+                    //clade_denom[subset_index] = subset_count;
 
-                    ++subset_index;
+                    //++subset_index;
                     }
 
                 // handle merged case
@@ -349,7 +364,7 @@ void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap
                         % "I"
                         % "Ipct"
                         % "D");
-                    for (subset_index = 0; subset_index < num_subsets; ++subset_index)
+                    for (unsigned subset_index = 0; subset_index < num_subsets; ++subset_index)
                         {
                         assert(_treefile_names.size() > 0);
                         assert(_tree_counts.size() > 0);
@@ -368,6 +383,9 @@ void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap
                             % I[subset_index]
                             % Ipct[subset_index]
                             % "---");
+
+                            //temporary!
+                            std::cerr << "  W = " << w[subset_index] << " Hp = " << clade_Hp[subset_index] << "\n" << std::endl;
                         }
                     if (num_subsets > 1)
                         {
@@ -392,7 +410,10 @@ void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap
                 // Initialize data for next clade
                 clade = v[0];
 
-                subset_index = 0;
+                //temporary!
+                std::cerr << clade.createPatternRepresentation() << " " << (sum_counts/total_trees) << std::endl;
+
+                unsigned subset_index = 0;
                 BOOST_FOREACH(double subset_count, count)
                     {
                     clade_Hp[subset_index] = lognrooted(clade.countOnBits());
@@ -461,6 +482,9 @@ void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap
                 % I[subset_index]
                 % Ipct[subset_index]
                 % "---");
+
+            //temporary!
+            std::cerr << "  w = " << w[subset_index] << " Hp = " << clade_Hp[subset_index] << "\n" << std::endl;
             }
         if (num_subsets > 1)
             {
