@@ -342,7 +342,10 @@ void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap
                         % "I"
                         % "Ipct"
                         % "D");
-                    for (unsigned subset_index = 0; subset_index < num_subsets; ++subset_index)
+                    }
+                for (unsigned subset_index = 0; subset_index < num_subsets; ++subset_index)
+                    {
+                    if (I[num_subsets] > 0.0)   // don't bother outputting numbers for clades with no information
                         {
                         assert(_treefile_names.size() > 0);
                         assert(_tree_counts.size() > 0);
@@ -375,12 +378,12 @@ void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap
                             % Ipct[num_subsets]
                             % D);
                         }
-                    std::vector<double> tmp;
-                    tmp.push_back(Ipct[num_subsets]);
-                    tmp.push_back(D);
-                    tmp.push_back(w[num_subsets]);
-                    clade_info.push_back(GalaxInfo(clade.createPatternRepresentation(), tmp));
                     }
+                std::vector<double> tmp;
+                tmp.push_back(Ipct[num_subsets]);
+                tmp.push_back(D);
+                tmp.push_back(w[num_subsets]);
+                clade_info.push_back(GalaxInfo(clade.createPatternRepresentation(), tmp));
 
                 // Initialize data for next clade
                 clade = v[0];
@@ -442,7 +445,10 @@ void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap
             % "I"
             % "Ipct"
             % "D");
-        for (unsigned subset_index = 0; subset_index < num_subsets; ++subset_index)
+        }
+    for (unsigned subset_index = 0; subset_index < num_subsets; ++subset_index)
+        {
+        if (I[num_subsets] > 0.0)
             {
             infostr += boost::str(boost::format(indiv_template)
                 % _treefile_names[subset_index]
@@ -454,26 +460,26 @@ void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap
                 % I[subset_index]
                 % Ipct[subset_index]
                 % "---");
+            if (num_subsets > 1)
+                {
+                infostr += boost::str(boost::format(merged_template)
+                    % "merged"
+                    % total_trees
+                    % clade_Hp[num_subsets]
+                    % clade_H[num_subsets]
+                    % (clade_Hp[num_subsets] - clade_H[num_subsets])
+                    % w[num_subsets]
+                    % I[num_subsets]
+                    % Ipct[num_subsets]
+                    % D);
+                }
             }
-        if (num_subsets > 1)
-            {
-            infostr += boost::str(boost::format(merged_template)
-                % "merged"
-                % total_trees
-                % clade_Hp[num_subsets]
-                % clade_H[num_subsets]
-                % (clade_Hp[num_subsets] - clade_H[num_subsets])
-                % w[num_subsets]
-                % I[num_subsets]
-                % Ipct[num_subsets]
-                % D);
-            }
-            std::vector<double> tmp;
-            tmp.push_back(Ipct[num_subsets]);
-            tmp.push_back(D);
-            tmp.push_back(w[num_subsets]);
-            clade_info.push_back(GalaxInfo(clade.createPatternRepresentation(), tmp));
         }
+        std::vector<double> tmp;
+        tmp.push_back(Ipct[num_subsets]);
+        tmp.push_back(D);
+        tmp.push_back(w[num_subsets]);
+        clade_info.push_back(GalaxInfo(clade.createPatternRepresentation(), tmp));
 
     // Report totals for each subset
     std::vector<GalaxInfo> subset_info;
