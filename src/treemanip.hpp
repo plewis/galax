@@ -848,9 +848,16 @@ inline void TreeManip<T>::buildFromSplitVector(const std::vector<Split> & split_
         BOOST_FOREACH(Split & s, splits)
             {
             // Create a new node to hold the taxa in the current split
+            assert(curr_node_index < _tree->_nodes.size());
             T * anc = &_tree->_nodes[++curr_node_index];
+            assert(anc);
             anc->_edge_length = 1.0;
-            anc->_edge_support = boost::str(boost::format("P=%.5f I=%.5f D=%.5f IC=%.5f") % s.getWeight() % s.getInfo() % s.getDisparity() % s.getCertainty());
+            double w = s.getWeight();
+            double i = s.getInfo();
+            double d = s.getDisparity();
+            double c = s.getCertainty();
+            std::string str = boost::str(boost::format("P=%.5f I=%.5f D=%.5f IC=%.5f") % w % i % d % c);
+            anc->_edge_support = str;
 
             refreshPreorder(root);
 
