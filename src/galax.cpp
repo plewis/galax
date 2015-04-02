@@ -169,6 +169,61 @@ void Galax::processTrees(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap
     _total_seconds += secondsElapsed(_start_time, _end_time);
     }
 
+void Galax::writeInfoProfile(TreeManip<Node>::TreeManipShPtr tm, std::vector<GalaxInfo> & clade_info)
+    {
+    _start_time = getCurrentTime();
+
+    std::vector< double > profile_times;
+    std::vector< double > profile_weights;
+
+    // Create a map from clade_info that provides the information content for any given clade
+    std::map< std::string, double > clade_map;
+    for (std::vector<GalaxInfo>::const_iterator gi = clade_info.begin(); gi != clade_info.end(); ++gi)
+        {
+        const GalaxInfo & ginfo = *gi;
+        double I = ginfo._value[3];
+        if (I > 0.0001)
+            clade_map[ginfo._name] = I;
+        }
+
+    std::cerr << "clade_map.size() = " << clade_map.size() << std::endl;
+
+    for (std::vector< std::string >::const_iterator sit = _newicks.begin(); sit != _newicks.end(); ++sit)
+        {
+        try
+            {
+            tm->buildFromNewick(*sit, (_rooted ? 0 : _outgroup));
+            tm->addToProfile(profile_times, profile_weights, clade_map);
+            }
+        catch(XGalax & x)
+            {
+            _outf << "ERROR: " << x.what() << std::endl;
+            std::exit(1);
+            }
+        //break;  //temporary!
+        }
+
+    std::ofstream profile("profile.R");
+    unsigned n = (unsigned)profile_times.size();
+    assert(n == (unsigned)profile_weights.size());
+    profile << "t <- c(" << join(profile_times.begin(), profile_times.end(), ",") << ")" << std::endl;
+    profile << "w <- c(" << join(profile_weights.begin(), profile_weights.end(), ",") << ")" << std::endl;
+    profile << "density(t, weights=w, from=0, give.Rkern=T)" << std::endl;
+    profile << "plot(density(t, weights=w, from=0, adjust=1), main=\"Information Profile\", xlab=\"Node Height\", ylab=\"\")" << std::endl;
+    profile << "rug(t)" << std::endl;
+    profile.close();
+
+    std::ofstream pro_file("profile.txt");
+    for (unsigned i = 0; i < n; ++i)
+        {
+        pro_file << profile_times[i] << '\t' << profile_weights[i] << std::endl;
+        }
+    profile.close();
+
+    _end_time = getCurrentTime();
+    _total_seconds += secondsElapsed(_start_time, _end_time);
+    }
+
 void Galax::showCCDMap(CCDMapType & ccdmap, unsigned subset_index)
 	{
     std::cerr << "CCD map has " << ccdmap.size() << " elements." << std::endl;
@@ -383,6 +438,7 @@ void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap
                 tmp.push_back(Ipct[num_subsets]);
                 tmp.push_back(D);
                 tmp.push_back(w[num_subsets]);
+                tmp.push_back(I[num_subsets]);  // added for information profiling
                 clade_info.push_back(GalaxInfo(clade.createPatternRepresentation(), tmp));
 
                 // Initialize data for next clade
@@ -479,6 +535,7 @@ void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap
         tmp.push_back(Ipct[num_subsets]);
         tmp.push_back(D);
         tmp.push_back(w[num_subsets]);
+        tmp.push_back(I[num_subsets]);  // added for information profiling
         clade_info.push_back(GalaxInfo(clade.createPatternRepresentation(), tmp));
 
     // Report totals for each subset
@@ -823,6 +880,7 @@ void Galax::run(std::string treefname, std::string listfname, unsigned skip, boo
             estimateInfo(tm, _ccdtree, infostr, majrule_clade_info);
             buildMajorityRuleTree(majrule_clade_info, majrule_clade_info, majrule_tree);
             writeMajruleTreefile("majrule", majrule_tree);
+            writeInfoProfile(tm, majrule_clade_info);
             }
         else
             {

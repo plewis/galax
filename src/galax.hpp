@@ -40,6 +40,9 @@ class Galax
         void                                getNewicks(std::vector< std::string > & tree_descriptions, const std::string & file_contents, unsigned skip);
         std::vector<std::string>            getTreeFileList(std::string listfname);
 
+        // profile
+        void                                writeInfoProfile(TreeManip<Node>::TreeManipShPtr tm, std::vector<GalaxInfo> & clade_info);
+
     private:
         static const unsigned               _ALLSUBSETS;
         std::vector< std::string >          _treefile_names;

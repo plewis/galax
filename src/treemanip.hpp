@@ -32,6 +32,9 @@ namespace galax
 typedef std::vector< Split >                    SplitVector;
 typedef std::vector< double >                   CountVector;
 typedef std::map< SplitVector, CountVector >    CCDMapType;
+typedef std::vector< double >                   TimeVector;
+typedef std::vector< double >                   WeightVector;
+typedef std::map< std::string, double >         CladeInfoMap;
 
 template <class T>
 class TreeManip
@@ -52,6 +55,7 @@ class TreeManip
 		std::string                                     makeNewick(unsigned ndecimals, bool edge_support) const;
 
         void                                            addToCCDMap(CCDMapType & ccdmap, unsigned subset_index, unsigned num_subsets);
+        void                                            addToProfile(TimeVector & profile_times, WeightVector & profile_weights, const CladeInfoMap & clade_map);
 
         std::string                                     debugDescribeNode(T * node) const;
         std::string                                     debugDescribeTree() const;
@@ -123,6 +127,7 @@ inline std::string TreeManip<T>::debugDescribeNode(T * node) const
     // Show other info about node
     s += boost::str(boost::format("\n  _number: %d") % nd._number);
     s += boost::str(boost::format("\n  _edge_length: %g") % nd._edge_length);
+    s += boost::str(boost::format("\n  _height: %g") % nd._height);
     s += boost::str(boost::format("\n  _edge_support: %s") % nd._edge_support);
     return s;
     }
@@ -216,15 +221,21 @@ inline void TreeManip<T>::refreshPreorder(T * root_node)
         assert(parent);
         if (!nd->_right_sib)
             {
+            parent->_height = 0.0;
             parent->_split.resetNUnits(_tree->_nleaves);
             }
         
         if (nd->_left_child)
             {
             // nd is an internal node
+            nd->_height /= 2.0; // assumes no polytomies
+            parent->_height += (nd->_height + nd->_edge_length);
             
             // node numbers for internal nodes begin at _tree->_nleaves (if rooted tree, root node has number _tree->_nleaves)
             nd->_number = curr_internal++;
+
+            // set split weight (edge length)
+            nd->_split.setWeight(nd->_edge_length);
 
             // update parent's split
             parent->_split |= nd->_split;
@@ -232,7 +243,8 @@ inline void TreeManip<T>::refreshPreorder(T * root_node)
         else
             {
             // nd is a leaf node
-            
+            parent->_height += (nd->_height + nd->_edge_length);
+
             // set split
             nd->_split.resetNUnits(_tree->_nleaves);
             nd->_split.setBit(nd->_number);
@@ -428,6 +440,41 @@ inline void TreeManip<T>::extractNodeNumberFromName(T * nd, std::set<unsigned> &
         }
     else
         throw XGalax(boost::str(boost::format("node name (%s) not interpretable as a positive integer") % nd->_name));
+    }
+
+template <class T>
+inline void TreeManip<T>::addToProfile(TimeVector & profile_times, WeightVector & profile_weights, const CladeInfoMap & clade_map)
+	{
+    BOOST_FOREACH(T * nd, _tree->_preorder)
+        {
+        if (nd->_left_child)
+            {
+            T * a = nd->_left_child;
+            T * b = a->_right_sib;
+
+            // Assuming trees are binary (no polytomies), so _left_child should have only one right sibling
+            if (b->_right_sib)
+                throw XGalax("Expecting all input trees to be binary, but found a polytomy");
+
+            std::string s = nd->_split.createPatternRepresentation();
+            CladeInfoMap::const_iterator it = clade_map.find(s);
+            if (it != clade_map.end())
+                {
+                double h = nd->_height;
+                profile_times.push_back(h);
+
+                double w = it->second;
+                profile_weights.push_back(w);
+                }
+            //else
+            //    {
+            //    //temporary!
+            //    double h = nd->_height;
+            //    profile_times.push_back(h);
+            //    profile_weights.push_back(-1.0);
+            //    }
+            }   // if (nd->_left_child)
+        }   // BOOST_FOREACH
     }
 
 template <class T>
