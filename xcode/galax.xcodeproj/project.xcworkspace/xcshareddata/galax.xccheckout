@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>IDESourceControlProjectFavoriteDictionaryKey</key>
+	<false/>
+	<key>IDESourceControlProjectIdentifier</key>
+	<string>9A3B225F-8BD7-4277-8998-756036074A57</string>
+	<key>IDESourceControlProjectName</key>
+	<string>galax</string>
+	<key>IDESourceControlProjectOriginsDictionary</key>
+	<dict>
+		<key>DEF4B4971FED8FC4AE8B6DAFC73DB799F37E6165</key>
+		<string>https://github.com/plewis/galax.git</string>
+	</dict>
+	<key>IDESourceControlProjectPath</key>
+	<string>xcode/galax.xcodeproj</string>
+	<key>IDESourceControlProjectRelativeInstallPathDictionary</key>
+	<dict>
+		<key>DEF4B4971FED8FC4AE8B6DAFC73DB799F37E6165</key>
+		<string>../../..</string>
+	</dict>
+	<key>IDESourceControlProjectURL</key>
+	<string>https://github.com/plewis/galax.git</string>
+	<key>IDESourceControlProjectVersion</key>
+	<integer>111</integer>
+	<key>IDESourceControlProjectWCCIdentifier</key>
+	<string>DEF4B4971FED8FC4AE8B6DAFC73DB799F37E6165</string>
+	<key>IDESourceControlProjectWCConfigurations</key>
+	<array>
+		<dict>
+			<key>IDESourceControlRepositoryExtensionIdentifierKey</key>
+			<string>public.vcs.git</string>
+			<key>IDESourceControlWCCIdentifierKey</key>
+			<string>DEF4B4971FED8FC4AE8B6DAFC73DB799F37E6165</string>
+			<key>IDESourceControlWCCName</key>
+			<string>galax-test</string>
+		</dict>
+	</array>
+</dict>
+</plist>

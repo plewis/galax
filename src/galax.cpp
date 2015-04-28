@@ -8,7 +8,9 @@
 
 #include <fstream>
 #include <limits>
+#include <algorithm>
 #include <boost/format.hpp>
+#include <boost/lambda/lambda.hpp>
 #include "galax.hpp"
 #include "galaxutil.hpp"
 #include "xgalax.hpp"
@@ -131,8 +133,11 @@ bool Galax::parseTranslate(const std::string & file_contents)
 void Galax::getNewicks(std::vector< std::string > & tree_descriptions, const std::string & file_contents, unsigned skip)
     {
     // tree STATE_0 [&lnP=-4493.80476846934,posterior=-4493.80476846934] = [&R] (9:[&rate=0.49971158909783764]1851.4724462198697,((1:[&rate=0.5965730394621352]292.73199858783727,(10:[&rate=0.6588031360335018]30.21172743645451,5:[&rate=0.7098036299867017]30.21172743645451):[&rate=1.0146941544458208]262.52027115138276):[&rate=1.0649642758561977]510.452441519872,((8:[&rate=0.7554924641162211]145.1076605992074,(7:[&rate=0.7984750329147966]64.0435017480143,6:[&rate=0.8402528958963882]64.0435017480143):[&rate=1.1206854064651213]81.06415885119311):[&rate=1.1844450597679457]522.823827314411,((3:[&rate=0.8818808237868384]60.2962343089954,4:[&rate=0.9242396697890951]60.2962343089954):[&rate=1.260685743226102]12.793802911399744,2:[&rate=0.9681896872253556]73.09003722039515):[&rate=1.3582802932633053]594.8414506932232):[&rate=1.4999660689010508]135.25295219409088):[&rate=1.7907115550989796]1048.2880061121605);
+    // tree STATE_0 [&lnP=-222468.46405040708,posterior=-222468.46405040708] = [&R] (((((((13:[&rate=0.41948130885774293]6.2959114346539975,((7:[&rate=0.4835763823640333]0.13550093579331035,1:[&rate=0.5209684767630073]0.13550093579331035):[&rate=0.9635652545109973]0.5551042325454463,15:[&rate=0.5492827727849298]0.6906051683387566):[&rate=0.9755113666282312]5.605306266315241):[&rate=0.9876472559631831]10.322795910985544,(17:[&rate=0.5728193948810578]5.685111439869553,2:[&rate=0.5933667775296758]5.685111439869553):[&rate=0.9999937594617617]10.93359590576999):[&rate=1.0125732516497858]5.142489242495607,(5:[&rate=0.6118563212473699]0.15949221153379095,28:[&rate=0.6288406629410516]0.15949221153379095):[&rate=1.0254099216508532]21.601704376601358):[&rate=1.038530094409559]116.24314628707417,(((29:[&rate=0.6446773336086477]0.762443175497069,8:[&rate=0.6596124676296977]0.762443175497069):[&rate=1.051962607302118]22.93607986063065,(23:[&rate=0.6738236879118028]0.5047866135985948,21:[&rate=0.6874440397483901]0.5047866135985948):[&rate=1.0657392562843637]23.193736422529124):[&rate=1.0798953297143943]16.280424093309122,20:[&rate=0.7005762553101323]39.97894712943684):[&rate=1.0944702533868567]98.02539574577247):[&rate=1.1095083777014945]20.87666238489902,18:[&rate=0.713301711000359]158.88100526010834):[&rate=1.1250599481079797]25.369142391234874,(((((6:[&rate=0.7256862972167103]4.157046671443346,27:[&rate=0.7377844041897827]4.157046671443346):[&rate=1.1411823142956972]0.4216380394703174,31:[&rate=0.749641711811296]4.578684710913663):[&rate=1.157941453976706]2.7888871791074665,((14:[&rate=0.7612971942888511]0.4820008033421106,26:[&rate=0.7727845943689399]0.4820008033421106):[&rate=1.175413916572047]2.1006906770419045,33:[&rate=0.7841335302910268]2.582691480384015):[&rate=1.1936893354723344]4.784880409637115):[&rate=1.2128737226386077]28.320425658481167,(4:[&rate=0.7953703429930343]9.047384492551547,19:[&rate=0.8065187562334204]9.047384492551547):[&rate=1.2330938592149618]26.640613055950748):[&rate=1.254503252991522]144.44188595962413,(34:[&rate=0.8176003998695023]49.84530458500085,(((35:[&rate=0.8286352317599452]4.64783851774415,9:[&rate=0.8396418838264186]4.64783851774415):[&rate=1.2772903877797566]17.7189245645138,(12:[&rate=0.8506379510097704]9.214275524579357,(3:[&rate=0.8616402371306506]6.8925402326469944,32:[&rate=0.8726649683413712]6.8925402326469944):[&rate=1.301690414163583]2.321735291932362):[&rate=1.3280021656518173]13.152487557678594):[&rate=1.356613709910537]7.407288154720803,((30:[&rate=0.8837279825004343]3.4163490119965814,25:[&rate=0.8948449011281925]3.4163490119965814):[&rate=1.3880421571600987]13.604316647910641,24:[&rate=0.9060312894219462]17.020665659907223):[&rate=1.422998494768541]12.75338557707153):[&rate=1.4624990961768445]20.071253348022093):[&rate=1.5080711470564487]130.2845789231256):[&rate=1.5621665830644125]4.120264143216787):[&rate=1.6291050095698845]125.24494247082069,(16:[&rate=0.9173028089947355]35.446341908327426,((22:[&rate=0.9286753674700471]0.013463304338836088,11:[&rate=0.940165268760073]0.013463304338836088):[&rate=1.7176458014779916]7.67054782472139,10:[&rate=0.9517893784722757]7.6840111290602255):[&rate=1.8504611669408024]27.762330779267202):[&rate=2.133204264216236]274.04874821383646);
+    // tree STATE_0 = ((((1:0.015159374158485823,6:0.015159374158485823):0.0064804882886747035,2:0.021639862447160527):0.104324463428508,5:0.12596432587566853):0.30645174794996116,(3:0.4084347373105321,4:0.4084347373105321):0.023981336515097595):0.0;
     tree_descriptions.clear();
-    boost::regex re("^\\s*[Tt]ree.+?(\\(.+?\\))\\s*;\\s*$");
+    //boost::regex re("^\\s*[Tt]ree.+?(\\(.+?\\))\\s*;\\s*$");
+    boost::regex re("^\\s*[Tt]ree(.+?);");
     boost::sregex_iterator m1(file_contents.begin(), file_contents.end(), re);
     boost::sregex_iterator m2;  // empty iterator used only to detect when we are done
     unsigned n = 0;
@@ -141,7 +146,11 @@ void Galax::getNewicks(std::vector< std::string > & tree_descriptions, const std
         const boost::match_results<std::string::const_iterator>& what = *m1;
         if (n >= skip)
             {
-            tree_descriptions.push_back( stripComments( what[1].str() ) );
+            std::string stripped = stripComments( what[1].str() );
+            std::string newick_only = stripTreeName(stripped);
+            //std::cerr << "*** stripped:    " << stripped << std::endl; //temporary
+            //std::cerr << "*** newick_only: " << newick_only << std::endl; //temporary
+            tree_descriptions.push_back(newick_only);
             }
         n += 1;
         }
@@ -173,6 +182,8 @@ void Galax::writeInfoProfile(TreeManip<Node>::TreeManipShPtr tm, std::vector<Gal
     {
     _start_time = getCurrentTime();
 
+    double sample_size = (double)_newicks.size();
+
     std::vector< double > profile_times;
     std::vector< double > profile_weights;
 
@@ -181,13 +192,14 @@ void Galax::writeInfoProfile(TreeManip<Node>::TreeManipShPtr tm, std::vector<Gal
     for (std::vector<GalaxInfo>::const_iterator gi = clade_info.begin(); gi != clade_info.end(); ++gi)
         {
         const GalaxInfo & ginfo = *gi;
-        double I = ginfo._value[3];
-        if (I > 0.0001)
-            clade_map[ginfo._name] = I;
+        double Iprop =ginfo._value[0]/100.0;
+        double cladeprob = ginfo._value[2];
+        double wt = Iprop/(cladeprob*sample_size);
+        clade_map[ginfo._name] = wt;
         }
-
     std::cerr << "clade_map.size() = " << clade_map.size() << std::endl;
 
+    // Build all trees, storing the time and information content (proportion of maximum possible) for each clade in profile_times and profile_weights, respectively
     for (std::vector< std::string >::const_iterator sit = _newicks.begin(); sit != _newicks.end(); ++sit)
         {
         try
@@ -202,6 +214,36 @@ void Galax::writeInfoProfile(TreeManip<Node>::TreeManipShPtr tm, std::vector<Gal
             }
         //break;  //temporary!
         }
+
+    // normalize profile weights
+    double sum_weights = std::accumulate(profile_weights.begin(), profile_weights.end(), 0.0);
+    std::cerr << "sum_weights = " << sum_weights << std::endl;
+    std::transform(profile_weights.begin(), profile_weights.end(), profile_weights.begin(), boost::lambda::_1/sum_weights);
+
+    /*
+    This is an example in R of weighted kernel density estimation:
+
+    x <- seq(-1,6,.01)  # this is a list of 7*100=700 points along the x axis to use for plotting lines
+    y1 <- 1             # first data point
+    y2 <- 4             # second data point
+    y3 <- 5             # third data point
+    w1 <- 2/3           # weight for first data point
+    w2 <- 1/6           # weight for second data point
+    w3 <- 1/6           # weight for third data point
+    h <- 2.0            # the bandwidth (standard deviation of component kernel densities)
+
+    # plot the kernel density estimate using the black-box function "density"
+    plot(density(c(y1,y2,y3), bw=h, kernel="gaussian", weights=c(w1,w2,w3)), xlim=c(-1,6), ylim=c(0,0.5), lwd=10, col="gray", lty="solid")
+
+    # plot the three component kernel densities using blue, dotted lines
+    curve(dnorm((x-y1)/h), col="blue", lty="dotted", add=T)
+    curve(dnorm((x-y2)/h), col="blue", lty="dotted", add=T)
+    curve(dnorm((x-y3)/h), col="blue", lty="dotted", add=T)
+
+    # plot the kernel density estimate again (but do not use the "density" function this time) using a thicker, red, dotted line
+    #curve(w1*dnorm((x-y1)/h)/h + w2*dnorm((x-y2)/h)/h + w3*dnorm((x-y3)/h)/h, add=T, lty="dotted", col="red", lwd=2)
+    curve(w1*dnorm(x,y1,h) + w2*dnorm(x,y2,h) + w3*dnorm(x,y3,h), add=T, lty="dotted", col="red", lwd=2)
+    */
 
     std::ofstream profile("profile.R");
     unsigned n = (unsigned)profile_times.size();
@@ -880,7 +922,11 @@ void Galax::run(std::string treefname, std::string listfname, unsigned skip, boo
             estimateInfo(tm, _ccdtree, infostr, majrule_clade_info);
             buildMajorityRuleTree(majrule_clade_info, majrule_clade_info, majrule_tree);
             writeMajruleTreefile("majrule", majrule_tree);
-            writeInfoProfile(tm, majrule_clade_info);
+            if (_rooted)
+                {
+                // profiling informativeness only makes sense for ultrametric trees
+                writeInfoProfile(tm, majrule_clade_info);
+                }
             }
         else
             {

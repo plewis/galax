@@ -176,9 +176,15 @@ void processCommandLineOptions(int argc, const char * argv[])
 
 int main(int argc, const char * argv[])
     {
-    processCommandLineOptions(argc, argv);
-
-    Galax(output_file_name).run(tree_file_name, list_file_name, skipped_newicks, trees_rooted, outgroup_taxon);
+    try
+        {
+        processCommandLineOptions(argc, argv);
+        Galax(output_file_name).run(tree_file_name, list_file_name, skipped_newicks, trees_rooted, outgroup_taxon);
+        }
+    catch (boost::program_options::unknown_option & x)
+        {
+        std::cerr << "Error: you specified an option that is unrecognized: " << x.get_option_name() << std::endl;
+        }
 
     return 0;
     }

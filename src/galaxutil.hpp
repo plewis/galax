@@ -166,6 +166,26 @@ inline std::string stripComments(const std::string & commented_nexus_text)
     return boost::regex_replace(commented_nexus_text, re, std::string());
     }
 
+inline std::string stripTreeName(const std::string & name_equals_tree)
+    {
+    std::string tree_description;
+    boost::smatch what;
+    boost::regex pattern("^.+?=\\s*(.+)");
+    bool regex_ok = boost::regex_search(name_equals_tree, what, pattern);
+    if (regex_ok)
+        {
+        // what[0] contains the whole string
+        // what[1] contains only what comes after the first =
+        // Construct a string using characters in contents from what[1].first to what[1].second
+        tree_description.insert(tree_description.begin(), what[1].first, what[1].second);
+        }
+    else
+        {
+        throw XGalax("regex failed to find = separating tree name from tree description in tree definition");
+        }
+    return tree_description;
+    }
+
 inline std::pair<bool, unsigned> convertStringToUnsignedInteger(const std::string & theString)
     {
     // attempt to convert theString to an unsigned integer

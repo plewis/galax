@@ -753,6 +753,10 @@ inline void TreeManip<T>::buildFromNewick(const std::string newick, unsigned roo
 							{
 #ifdef QUICK_AND_DIRTY_NODE_NUMBERS
                             int x = atoi(nd->_name.c_str());
+                            if (x == 0)
+                                {
+                                std::cerr << "problematic tree description: " << nd->_name << std::endl;
+                                }
                             assert(x > 0);
                             nd->_number = x - 1;
 #else
