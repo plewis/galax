@@ -29,12 +29,16 @@
 namespace galax
 {
 
-typedef std::vector< Split >                    SplitVector;
-typedef std::vector< double >                   CountVector;
-typedef std::map< SplitVector, CountVector >    CCDMapType;
-typedef std::vector< double >                   TimeVector;
-typedef std::vector< double >                   WeightVector;
-typedef std::map< std::string, double >         CladeInfoMap;
+typedef std::vector< Split >                      SplitVector;
+typedef std::vector< double >                     CountVector;
+typedef std::map< SplitVector, CountVector >      CCDMapType;
+typedef std::vector< double >                     TimeVector;
+typedef std::vector< double >                     WeightVector;
+typedef std::map< std::string, double >           CladeInfoMap;
+
+typedef std::vector< SplitVector >                TreeIDType;
+typedef std::set< TreeIDType >                    TreeIDSetType;
+typedef std::vector< TreeIDSetType >              SubsetTreeSetType;
 
 template <class T>
 class TreeManip
@@ -54,7 +58,7 @@ class TreeManip
         void                                            buildStarTree(unsigned nleaves, unsigned root_at);
 		std::string                                     makeNewick(unsigned ndecimals, bool edge_support) const;
 
-        void                                            addToCCDMap(CCDMapType & ccdmap, unsigned subset_index, unsigned num_subsets);
+        void                                            addToCCDMap(CCDMapType & ccdmap, SubsetTreeSetType & treeCCD, unsigned subset_index, unsigned num_subsets);
         void                                            addToProfile(TimeVector & profile_times, WeightVector & profile_weights, const CladeInfoMap & clade_map);
 
         std::string                                     debugDescribeNode(T * node) const;
@@ -494,8 +498,20 @@ inline void TreeManip<T>::addToProfile(TimeVector & profile_times, WeightVector 
     }
 
 template <class T>
-inline void TreeManip<T>::addToCCDMap(CCDMapType & ccdmap, unsigned subset_index, unsigned num_subsets)
+inline void TreeManip<T>::addToCCDMap(CCDMapType & ccdmap, SubsetTreeSetType & treeCCD, unsigned subset_index, unsigned num_subsets)
 	{
+    if (treeCCD.size() == 0)
+        {
+        for (unsigned i = 0; i < num_subsets; ++i)
+            {
+            TreeIDSetType v;
+            treeCCD.push_back(v);
+            }
+        }
+
+    // Add a vector to hold conditional clade definitions (each of which is a SplitVector)
+    TreeIDType tree_vector;
+
     BOOST_FOREACH(T * nd, _tree->_preorder)
         {
         if (nd->_left_child)
@@ -527,8 +543,16 @@ inline void TreeManip<T>::addToCCDMap(CCDMapType & ccdmap, unsigned subset_index
             // increment the conditional clade count
             efficientIncrement(ccdmap, v, subset_index, num_subsets);
 
+            // add iter to treeCCD for the current tree
+            if (nd->_split.countOnBits() > 2)
+                tree_vector.push_back(v);
+
             }   // if (nd->_left_child)
         }   // BOOST_FOREACH
+
+
+    treeCCD[subset_index].insert(tree_vector);
+        
     }
 
 #define QUICK_AND_DIRTY_NODE_NUMBERS

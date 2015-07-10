@@ -85,11 +85,13 @@ typename MapType::iterator efficientAddOrCheck(MapType & m, const KeyArgType & k
         }
     }
 
-// Modified version of item 24, p. 110, in Meyers, Scott. 2001. Effective STL: 50 specific ways to improve
-// your use of the Standard Template Library. Addison-Wesley, Boston.
+// This function provides an efficient, general way to increment the value m[k] where map values are unsigned integers.
 template< typename MapType, typename KeyArgType >
 typename MapType::iterator efficientIncrement(MapType & m, const KeyArgType & k, unsigned subset_index, unsigned num_subsets)
     {
+    // Modified version of item 24, p. 110, in Meyers, Scott. 2001. Effective STL: 50 specific ways to improve
+    // your use of the Standard Template Library. Addison-Wesley, Boston.
+
     // Find where k is, or should be
     typename MapType::iterator lb = m.lower_bound(k);
 

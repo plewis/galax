@@ -32,6 +32,7 @@ class Galax
 
         void                                debugShowCCDMap(CCDMapType & ccdmap, unsigned subset_index);
         void                                saveDetailedInfoForClade(std::string & detailedinfostr, std::string pattern, unsigned num_subsets, unsigned total_trees, std::vector<double> & clade_Hp, std::vector<double> & clade_H, std::vector<double> & w, std::vector<double> & I, std::vector<double> & Ipct, double D);
+        double                              estimateCoverage(CCDMapType & ccdmap, unsigned subset_index);
         void                                estimateInfo(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap, std::string & summaryinfostr, std::string & detailedinfostr, std::vector<GalaxInfo> & clade_info);
         void                                buildMajorityRuleTree(std::vector<GalaxInfo> & majrule_info, std::vector<GalaxInfo> & annotate_info, std::string & majrule_newick);
         void                                writeMajruleTreefile(std::string fnprefix, std::string & majrule_newick);
@@ -61,12 +62,17 @@ class Galax
         double                              _total_seconds;
         bool                                _rooted;
         std::string                         _outfprefix;
-        std::ofstream                       _treef;
-        std::ofstream                       _outf;
-        std::ofstream                       _detailsf;
-        unsigned                            _outgroup;
-        CCDMapType                          _ccdlist;
-        CCDMapType                          _ccdtree;
+
+        std::ofstream                       _treef;     // file for storing majority rule consensus tree
+        std::ofstream                       _outf;      // file used for output summary
+        std::ofstream                       _detailsf;  // file used for details of clades
+
+        unsigned                            _outgroup;  // 1-based index of outgroup taxon to use for rooting unrooted trees (1 assumed if not specified)
+
+        CCDMapType                          _ccdlist;   // _ccdlist[i][j] stores conditional clade info for clade i, subset j, for trees specified by --listfile
+        CCDMapType                          _ccdtree;   // _ccdtree[i][0] stores conditional clade info for clade i for trees specified by --treefile
+
+        SubsetTreeSetType                   _treeCCD;  
     };
 
 }
