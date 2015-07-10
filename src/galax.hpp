@@ -30,13 +30,18 @@ class Galax
 
     private:
 
-        void                                showCCDMap(CCDMapType & ccdmap, unsigned subset_index);
-        void                                estimateInfo(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap, std::string & infostr, std::vector<GalaxInfo> & clade_info);
+        void                                debugShowCCDMap(CCDMapType & ccdmap, unsigned subset_index);
+        void                                saveDetailedInfoForClade(std::string & detailedinfostr, std::string pattern, unsigned num_subsets, unsigned total_trees, std::vector<double> & clade_Hp, std::vector<double> & clade_H, std::vector<double> & w, std::vector<double> & I, std::vector<double> & Ipct, double D);
+        void                                estimateInfo(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap, std::string & summaryinfostr, std::string & detailedinfostr, std::vector<GalaxInfo> & clade_info);
         void                                buildMajorityRuleTree(std::vector<GalaxInfo> & majrule_info, std::vector<GalaxInfo> & annotate_info, std::string & majrule_newick);
         void                                writeMajruleTreefile(std::string fnprefix, std::string & majrule_newick);
         void                                processTrees(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap, unsigned subset_index, unsigned num_subsets);
-        void                                getTreesFromFile(std::string treefname, unsigned skip);
+        void                                getTrees(std::string file_contents, unsigned skip);
+        bool                                isNexusFile(const std::string & file_contents);
+        unsigned                            taxonNumberFromName(const std::string taxon_name);
+        bool                                replaceTaxonNames(const std::string & newick_with_taxon_names, std::string & newick_with_taxon_numbers);
         bool                                parseTranslate(const std::string & file_contents);
+        void                                getPhyloBayesNewicks(std::vector< std::string > & tree_descriptions, const std::string & file_contents, unsigned skip);
         void                                getNewicks(std::vector< std::string > & tree_descriptions, const std::string & file_contents, unsigned skip);
         std::vector<std::string>            getTreeFileList(std::string listfname);
 
@@ -50,6 +55,7 @@ class Galax
         std::vector< std::string >          _merged_newicks;
         std::vector< unsigned >             _tree_counts;
         std::map< unsigned, std::string >   _translate;
+        std::map< std::string, unsigned >   _reverse_translate;
         boost::posix_time::ptime            _start_time;
         boost::posix_time::ptime            _end_time;
         double                              _total_seconds;
@@ -57,6 +63,7 @@ class Galax
         std::string                         _outfprefix;
         std::ofstream                       _treef;
         std::ofstream                       _outf;
+        std::ofstream                       _detailsf;
         unsigned                            _outgroup;
         CCDMapType                          _ccdlist;
         CCDMapType                          _ccdtree;

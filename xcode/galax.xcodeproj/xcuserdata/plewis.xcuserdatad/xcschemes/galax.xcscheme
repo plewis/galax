@@ -44,7 +44,7 @@
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       launchStyle = "0"
       useCustomWorkingDirectory = "YES"
-      customWorkingDirectory = "/Users/plewis/Documents/grants/phyinf/2014/python/coalescent-simulations/codent/psaBcodon/psaBgpu"
+      customWorkingDirectory = "/Users/plewis/Documents/manuscripts/to-be-written/bayesinfo/manuscript/secondtry/supplementary/figure2-galax"
       buildConfiguration = "Debug"
       ignoresPersistentStateOnLaunch = "NO"
       debugDocumentVersioning = "YES"
@@ -61,52 +61,28 @@
       </BuildableProductRunnable>
       <CommandLineArguments>
          <CommandLineArgument
-            argument = "--listfile"
-            isEnabled = "YES">
-         </CommandLineArgument>
-         <CommandLineArgument
-            argument = "treefiles.txt"
-            isEnabled = "YES">
-         </CommandLineArgument>
-         <CommandLineArgument
             argument = "--treefile"
-            isEnabled = "NO">
+            isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "Ericales4.xml1.trees"
-            isEnabled = "NO">
-         </CommandLineArgument>
-         <CommandLineArgument
-            argument = "frt.trees"
-            isEnabled = "NO">
-         </CommandLineArgument>
-         <CommandLineArgument
-            argument = "trees.t"
-            isEnabled = "NO">
-         </CommandLineArgument>
-         <CommandLineArgument
-            argument = "--rooted"
-            isEnabled = "NO">
+            argument = "figure2.tre"
+            isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
             argument = "--skip"
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "1113"
+            argument = "0"
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "1"
-            isEnabled = "NO">
+            argument = "--outgroup"
+            isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "--version"
-            isEnabled = "NO">
-         </CommandLineArgument>
-         <CommandLineArgument
-            argument = "--help"
-            isEnabled = "NO">
+            argument = "8"
+            isEnabled = "YES">
          </CommandLineArgument>
       </CommandLineArguments>
       <AdditionalOptions>

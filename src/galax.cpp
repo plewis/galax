@@ -22,27 +22,44 @@ const unsigned Galax::_ALLSUBSETS = std::numeric_limits<unsigned>::max();
 Galax::Galax(const std::string outfile_prefix)
     {
     _outfprefix = outfile_prefix;
+
     std::string outfname = outfile_prefix + ".txt";
     _outf.open(outfname.c_str());
+
+    std::string detailsfname = outfile_prefix + "-details.txt";
+    _detailsf.open(detailsfname.c_str());
     }
 
 Galax::~Galax()
     {
     _outf.close();
+    _detailsf.close();
     }
 
-void Galax::getTreesFromFile(std::string treefname, unsigned skip)
+void Galax::getTrees(std::string file_contents, unsigned skip)
     {
     _start_time = getCurrentTime();
 
-    std::string file_contents;
-    getFileContents(file_contents, treefname);
-    bool complete = parseTranslate(file_contents);
-    if (!complete)
-        throw XGalax(boost::str(boost::format("File %s contains a different number of taxa than other files. Galax requires taxa to be the same for all tree files processed.") % treefname));
-
     std::vector< std::string > tree_descriptions;
-    getNewicks(tree_descriptions, file_contents, skip);
+    if (isNexusFile(file_contents))
+        {
+        bool complete = parseTranslate(file_contents);
+        if (!complete)
+            throw XGalax("Galax requires taxa to be the same for all tree files processed.");
+
+        getNewicks(tree_descriptions, file_contents, skip);
+        }
+    else
+        {
+        getPhyloBayesNewicks(tree_descriptions, file_contents, skip);
+
+        //TODO: this is ugly - try to get rid of _reverse_translate by converting _translate to map(string, int) rather than map(int, string)
+        _translate.clear();
+        for (std::map< std::string, unsigned>::iterator it = _reverse_translate.begin(); it != _reverse_translate.end(); ++it)
+            {
+            _translate[it->second] = it->first;
+            }
+        }
     _tree_counts.push_back((unsigned)tree_descriptions.size());
     _newicks.clear();
     _newicks.insert(_newicks.end(), tree_descriptions.begin(), tree_descriptions.end());
@@ -66,6 +83,61 @@ std::vector<std::string> Galax::getTreeFileList(std::string listfname)
     _total_seconds += secondsElapsed(_start_time, _end_time);
 
     return tree_file_names;
+    }
+
+bool Galax::isNexusFile(const std::string & file_contents)
+    {
+    boost::regex pattern("#nexus|#Nexus|#NEXUS");
+    boost::smatch what;
+    bool is_nexus_file = (bool)boost::regex_match(file_contents.substr(0,6), what, pattern);
+    return is_nexus_file;
+    }
+
+unsigned Galax::taxonNumberFromName(const std::string taxon_name)
+    {
+    unsigned taxon_number = 0;
+    std::map< std::string, unsigned >::iterator it = _reverse_translate.find(taxon_name);
+    if (it != _reverse_translate.end())
+        {
+        // taxon_name is an existing key, so return its value
+        taxon_number = it->second;
+        }
+    else
+        {
+        // taxon_name is not an existing key, so create an entry for it
+        taxon_number = (unsigned)(_reverse_translate.size() + 1);
+        _reverse_translate[taxon_name] = taxon_number;
+        }
+
+    return taxon_number;
+    }
+
+bool Galax::replaceTaxonNames(const std::string & newick_with_taxon_names, std::string & newick_with_taxon_numbers)
+    {
+    newick_with_taxon_numbers.clear();
+    boost::regex taxonexpr("[(,]+\\s*([^,):]+)");
+    boost::sregex_iterator m1(newick_with_taxon_names.begin(), newick_with_taxon_names.end(), taxonexpr);
+    boost::sregex_iterator m2;
+    boost::sregex_iterator last;
+    for (; m1 != m2; ++m1)
+        {
+        boost::smatch what = *m1;
+        newick_with_taxon_numbers.append(what.prefix());
+        newick_with_taxon_numbers.append(what[0].first, what[1].first) ;
+        unsigned n = taxonNumberFromName(what[1].str());
+        if (n > 0)
+            {
+            newick_with_taxon_numbers.append(std::to_string(n));
+            }
+        else
+            {
+            throw XGalax(boost::str(boost::format("Could not convert taxon name (%s) into a valid taxon number") % what[1].str()));
+            }
+        last = m1;
+        }
+    boost::smatch what = *last;
+    newick_with_taxon_numbers.append(what.suffix());
+    return true;
     }
 
 bool Galax::parseTranslate(const std::string & file_contents)
@@ -130,6 +202,27 @@ bool Galax::parseTranslate(const std::string & file_contents)
     return true;
     }
 
+void Galax::getPhyloBayesNewicks(std::vector< std::string > & tree_descriptions, const std::string & file_contents, unsigned skip)
+    {
+    tree_descriptions.clear();
+    boost::regex re("^(.+?);");
+    boost::sregex_iterator m1(file_contents.begin(), file_contents.end(), re);
+    boost::sregex_iterator m2;  // empty iterator used only to detect when we are done
+    unsigned n = 0;
+    for (; m1 != m2; ++m1)
+        {
+        const boost::match_results<std::string::const_iterator>& what = *m1;
+        if (n >= skip)
+            {
+            std::string newick_only;
+            replaceTaxonNames(what[1].str(), newick_only);
+            tree_descriptions.push_back(newick_only);
+            }
+        n += 1;
+        std::cerr << n << "\n";
+        }
+    }
+
 void Galax::getNewicks(std::vector< std::string > & tree_descriptions, const std::string & file_contents, unsigned skip)
     {
     // tree STATE_0 [&lnP=-4493.80476846934,posterior=-4493.80476846934] = [&R] (9:[&rate=0.49971158909783764]1851.4724462198697,((1:[&rate=0.5965730394621352]292.73199858783727,(10:[&rate=0.6588031360335018]30.21172743645451,5:[&rate=0.7098036299867017]30.21172743645451):[&rate=1.0146941544458208]262.52027115138276):[&rate=1.0649642758561977]510.452441519872,((8:[&rate=0.7554924641162211]145.1076605992074,(7:[&rate=0.7984750329147966]64.0435017480143,6:[&rate=0.8402528958963882]64.0435017480143):[&rate=1.1206854064651213]81.06415885119311):[&rate=1.1844450597679457]522.823827314411,((3:[&rate=0.8818808237868384]60.2962343089954,4:[&rate=0.9242396697890951]60.2962343089954):[&rate=1.260685743226102]12.793802911399744,2:[&rate=0.9681896872253556]73.09003722039515):[&rate=1.3582802932633053]594.8414506932232):[&rate=1.4999660689010508]135.25295219409088):[&rate=1.7907115550989796]1048.2880061121605);
@@ -169,7 +262,7 @@ void Galax::processTrees(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap
             }
         catch(XGalax & x)
             {
-            _outf << "ERROR: " << x.what() << std::endl;
+            std::cerr << "ERROR: " << x.what() << std::endl;
             std::exit(1);
             }
         }
@@ -209,7 +302,7 @@ void Galax::writeInfoProfile(TreeManip<Node>::TreeManipShPtr tm, std::vector<Gal
             }
         catch(XGalax & x)
             {
-            _outf << "ERROR: " << x.what() << std::endl;
+            std::cerr << "ERROR: " << x.what() << std::endl;
             std::exit(1);
             }
         //break;  //temporary!
@@ -266,7 +359,7 @@ void Galax::writeInfoProfile(TreeManip<Node>::TreeManipShPtr tm, std::vector<Gal
     _total_seconds += secondsElapsed(_start_time, _end_time);
     }
 
-void Galax::showCCDMap(CCDMapType & ccdmap, unsigned subset_index)
+void Galax::debugShowCCDMap(CCDMapType & ccdmap, unsigned subset_index)
 	{
     std::cerr << "CCD map has " << ccdmap.size() << " elements." << std::endl;
     for (CCDMapType::iterator it = ccdmap.begin(); it != ccdmap.end(); ++it)
@@ -286,7 +379,64 @@ void Galax::showCCDMap(CCDMapType & ccdmap, unsigned subset_index)
         }
     }
 
-void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap, std::string & infostr, std::vector<GalaxInfo> & clade_info)
+void Galax::saveDetailedInfoForClade(std::string & detailedinfostr, std::string pattern, unsigned num_subsets, unsigned total_trees, std::vector<double> & clade_Hp, std::vector<double> & clade_H, std::vector<double> & w, std::vector<double> & I, std::vector<double> & Ipct, double D)
+    {
+    const char indiv_template[]  = "%20s %12d %12.5f %12.5f %12.5f %12.5f %12.5f %12.5f %12s\n";
+    const char merged_template[] = "%20s %12d %12.5f %12.5f %12.5f %12.5f %12.5f %12.5f %12.5f\n";
+
+    if (I[num_subsets] > 0.0)   // don't bother outputting numbers for clades with no information
+        {
+        detailedinfostr += boost::str(boost::format("\nClade %s\n") % pattern);
+        detailedinfostr += boost::str(boost::format("%20s %12s %12s %12s %12s %12s %12s %12s %12s\n")
+            % "treefile"
+            % "trees"
+            % "Hp"
+            % "H"
+            % "Hp - H"
+            % "w"
+            % "I"
+            % "Ipct"
+            % "D");
+        }
+    for (unsigned subset_index = 0; subset_index < num_subsets; ++subset_index)
+        {
+        if (I[subset_index] > 0.0)   // don't bother outputting numbers for clades with no information
+            {
+            assert(_treefile_names.size() > 0);
+            assert(_tree_counts.size() > 0);
+            assert(clade_Hp.size() > 0);
+            assert(clade_H.size() > 0);
+            assert(w.size() > 0);
+            assert(I.size() > 0);
+            assert(Ipct.size() > 0);
+            detailedinfostr += boost::str(boost::format(indiv_template)
+                % _treefile_names[subset_index]
+                % _tree_counts[subset_index]
+                % clade_Hp[subset_index]
+                % clade_H[subset_index]
+                % (clade_Hp[subset_index] - clade_H[subset_index])
+                % w[subset_index]
+                % I[subset_index]
+                % Ipct[subset_index]
+                % "---");
+            }
+        if (num_subsets > 1)
+            {
+            detailedinfostr += boost::str(boost::format(merged_template)
+                % "merged"
+                % total_trees
+                % clade_Hp[num_subsets]
+                % clade_H[num_subsets]
+                % (clade_Hp[num_subsets] - clade_H[num_subsets])
+                % w[num_subsets]
+                % I[num_subsets]
+                % Ipct[num_subsets]
+                % D);
+            }
+        }
+    }
+
+void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap, std::string & summaryinfostr, std::string & detailedinfostr, std::vector<GalaxInfo> & clade_info)
     {
     _start_time = getCurrentTime();
 
@@ -302,16 +452,18 @@ void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap
         ntaxa -= 1;
     double total_entropy = lognrooted(ntaxa);
 
-    infostr = "Order of taxa in split representations:\n";
+    std::string tmpstr = "Order of taxa in split representations:\n";
     typedef std::pair<unsigned, std::string> translate_map_type;
     BOOST_FOREACH(const translate_map_type & translate_key_value, _translate)
         {
-        infostr += boost::str(boost::format("%12d  %s\n") % translate_key_value.first % translate_key_value.second);
+        tmpstr += boost::str(boost::format("%12d  %s\n") % translate_key_value.first % translate_key_value.second);
         }
 
-    infostr += "\nLindley Information\n";
-    infostr += boost::str(boost::format("  Number of taxa in ingroup: %d\n") % ntaxa);
-    infostr += boost::str(boost::format("  Total prior entropy: %.5f\n") % total_entropy);
+    summaryinfostr = tmpstr;
+    detailedinfostr = tmpstr;
+    detailedinfostr += "\nLindley Information\n";
+    detailedinfostr += boost::str(boost::format("  Number of taxa in ingroup: %d\n") % ntaxa);
+    detailedinfostr += boost::str(boost::format("  Total prior entropy: %.5f\n") % total_entropy);
 
     Split clade;
     clade_info.clear();
@@ -409,6 +561,7 @@ void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap
                     I[subset_index] = w[subset_index]*(clade_Hp[subset_index] - clade_H[subset_index]);
                     total_I[subset_index] += I[subset_index];
 
+
                     Ipct[subset_index] = 100.0*I[subset_index]/total_entropy;
                     sum_Ipct += Ipct[subset_index];
                     }
@@ -426,10 +579,13 @@ void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap
                 double D = (sum_Ipct/num_subsets) - Ipct[num_subsets];
                 total_D += D;
 
+#if 1
+                saveDetailedInfoForClade(detailedinfostr, clade.createPatternRepresentation(), num_subsets, total_trees, clade_Hp, clade_H, w, I, Ipct, D);
+#else
                 if (I[num_subsets] > 0.0)   // don't bother outputting numbers for clades with no information
                     {
-                    infostr += boost::str(boost::format("\nClade %s\n") % clade.createPatternRepresentation());
-                    infostr += boost::str(boost::format("%20s %12s %12s %12s %12s %12s %12s %12s %12s\n")
+                    detailedinfostr += boost::str(boost::format("\nClade %s\n") % clade.createPatternRepresentation());
+                    detailedinfostr += boost::str(boost::format("%20s %12s %12s %12s %12s %12s %12s %12s %12s\n")
                         % "treefile"
                         % "trees"
                         % "Hp"
@@ -442,7 +598,7 @@ void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap
                     }
                 for (unsigned subset_index = 0; subset_index < num_subsets; ++subset_index)
                     {
-                    if (I[num_subsets] > 0.0)   // don't bother outputting numbers for clades with no information
+                    if (I[subset_index] > 0.0)   // don't bother outputting numbers for clades with no information
                         {
                         assert(_treefile_names.size() > 0);
                         assert(_tree_counts.size() > 0);
@@ -451,7 +607,7 @@ void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap
                         assert(w.size() > 0);
                         assert(I.size() > 0);
                         assert(Ipct.size() > 0);
-                        infostr += boost::str(boost::format(indiv_template)
+                        detailedinfostr += boost::str(boost::format(indiv_template)
                             % _treefile_names[subset_index]
                             % _tree_counts[subset_index]
                             % clade_Hp[subset_index]
@@ -464,7 +620,7 @@ void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap
                         }
                     if (num_subsets > 1)
                         {
-                        infostr += boost::str(boost::format(merged_template)
+                        detailedinfostr += boost::str(boost::format(merged_template)
                             % "merged"
                             % total_trees
                             % clade_Hp[num_subsets]
@@ -476,6 +632,9 @@ void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap
                             % D);
                         }
                     }
+#endif
+
+                // store numbers for this clade in clade_info vector
                 std::vector<double> tmp;
                 tmp.push_back(Ipct[num_subsets]);
                 tmp.push_back(D);
@@ -530,10 +689,13 @@ void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap
     double D = (sum_Ipct/num_subsets) - Ipct[num_subsets];
     total_D += D;
 
+#if 1
+    saveDetailedInfoForClade(detailedinfostr, clade.createPatternRepresentation(), num_subsets, total_trees, clade_Hp, clade_H, w, I, Ipct, D);
+#else
     if (I[num_subsets] > 0.0)
         {
-        infostr += boost::str(boost::format("\nClade %s\n") % clade.createPatternRepresentation());
-        infostr += boost::str(boost::format("%20s %12s %12s %12s %12s %12s %12s %12s %12s\n")
+        detailedinfostr += boost::str(boost::format("\nClade %s\n") % clade.createPatternRepresentation());
+        detailedinfostr += boost::str(boost::format("%20s %12s %12s %12s %12s %12s %12s %12s %12s\n")
             % "treefile"
             % "trees"
             % "Hp"
@@ -548,7 +710,7 @@ void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap
         {
         if (I[num_subsets] > 0.0)
             {
-            infostr += boost::str(boost::format(indiv_template)
+            detailedinfostr += boost::str(boost::format(indiv_template)
                 % _treefile_names[subset_index]
                 % _tree_counts[subset_index]
                 % clade_Hp[subset_index]
@@ -560,7 +722,7 @@ void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap
                 % "---");
             if (num_subsets > 1)
                 {
-                infostr += boost::str(boost::format(merged_template)
+                detailedinfostr += boost::str(boost::format(merged_template)
                     % "merged"
                     % total_trees
                     % clade_Hp[num_subsets]
@@ -573,6 +735,7 @@ void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap
                 }
             }
         }
+#endif
         std::vector<double> tmp;
         tmp.push_back(Ipct[num_subsets]);
         tmp.push_back(D);
@@ -593,8 +756,8 @@ void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap
 
     const char indiv_summary[]  = "%20s %12.5f %12.5f %12s\n";
     const char merged_summary[] = "%20s %12.5f %12.5f %12.5f\n";
-    infostr += std::string("\nTotals\n");
-    infostr += boost::str(boost::format("%20s %12s %12s %12s\n")
+    summaryinfostr += std::string("\nTotals\n");
+    summaryinfostr += boost::str(boost::format("%20s %12s %12s %12s\n")
         % "treefile"
         % "I"
         % "Ipct"
@@ -603,7 +766,7 @@ void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap
         {
         double info = c._value[0];
         double pct = 100.0*info/total_entropy;
-        infostr += boost::str(boost::format(indiv_summary)
+        summaryinfostr += boost::str(boost::format(indiv_summary)
             % c._name
             % info
             % pct
@@ -616,7 +779,7 @@ void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap
     if (num_subsets > 1)
         {
         totalIpct = (100.0*total_I[num_subsets]/total_entropy);
-        infostr += boost::str(boost::format(merged_summary)
+        summaryinfostr += boost::str(boost::format(merged_summary)
             % "merged"
             % total_I[num_subsets]
             % (100.0*total_I[num_subsets]/total_entropy)
@@ -626,8 +789,8 @@ void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap
         GalaxInfo::_sortby_index = 0;
         std::sort(clade_info.begin(), clade_info.end(), std::greater<GalaxInfo>());
         const char clade_summary[]  = "%12.5f %12.5f %12.5f %12.5f %12.5f %s\n";
-        infostr += std::string("\nClades sorted by merged info (top 95% shown):\n");
-        infostr += boost::str(boost::format("%12s %12s %12s %12s %12s %s\n")
+        summaryinfostr += std::string("\nClades sorted by merged info (top 95% shown):\n");
+        summaryinfostr += boost::str(boost::format("%12s %12s %12s %12s %12s %s\n")
             % "I"
             % "%"
             % "cum. %"
@@ -644,7 +807,7 @@ void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap
             cumpct += pct;
             if (cumpct > 95)
                 break;
-            infostr += boost::str(boost::format(clade_summary)
+            summaryinfostr += boost::str(boost::format(clade_summary)
                 % info
                 % pct
                 % cumpct
@@ -656,8 +819,8 @@ void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap
         // Report diff for each clade sorted from highest to lowest
         GalaxInfo::_sortby_index = 1;
         std::sort(clade_info.begin(), clade_info.end(), std::greater<GalaxInfo>());
-        infostr += std::string("\nClades sorted by D (top 95% shown):\n");
-        infostr += boost::str(boost::format("%12s %12s %12s %12s %12s %s\n")
+        summaryinfostr += std::string("\nClades sorted by D (top 95% shown):\n");
+        summaryinfostr += boost::str(boost::format("%12s %12s %12s %12s %12s %s\n")
             % "D"
             % "%"
             % "cum. %"
@@ -674,7 +837,7 @@ void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap
             cumpct += pct;
             if (cumpct > 95)
                 break;
-            infostr += boost::str(boost::format(clade_summary)
+            summaryinfostr += boost::str(boost::format(clade_summary)
                 % diff
                 % pct
                 % cumpct
@@ -687,14 +850,14 @@ void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap
     // Report clade posterior for each clade sorted from highest to lowest
     GalaxInfo::_sortby_index = 2;
     std::sort(clade_info.begin(), clade_info.end(), std::greater<GalaxInfo>());
-    infostr += std::string("\nClades sorted by merged clade posterior (w) (only those >= 50% shown):\n");
-    infostr += boost::str(boost::format("%12s %12s %12s %s\n")
+    summaryinfostr += std::string("\nClades sorted by merged clade posterior (w) (only those >= 50% shown):\n");
+    summaryinfostr += boost::str(boost::format("%12s %12s %12s %s\n")
         % "w"
         % "Ipct"
         % "D"
         % "clade");
     cumpct = 0.0;
-    double log2 = log(2.0);
+    //double log2 = log(2.0);
     BOOST_FOREACH(GalaxInfo & c, clade_info)
         {
         double info = c._value[0];
@@ -703,19 +866,12 @@ void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap
 
         if (w >= 0.5)
             {
-            infostr += boost::str(boost::format("%12.5f %12.5f %12.5f %s\n")
+            summaryinfostr += boost::str(boost::format("%12.5f %12.5f %12.5f %s\n")
                 % w
                 % info
                 % diff
                 % c._name);
             }
-        }
-
-    infostr += "\nOrder of taxa in split representations:\n";
-    typedef std::pair<unsigned, std::string> translate_map_type;
-    BOOST_FOREACH(const translate_map_type & translate_key_value, _translate)
-        {
-        infostr += boost::str(boost::format("%12d  %s\n") % translate_key_value.first % translate_key_value.second);
         }
 
     _end_time = getCurrentTime();
@@ -865,23 +1021,26 @@ void Galax::run(std::string treefname, std::string listfname, unsigned skip, boo
         else
             _treefile_names.push_back(treefname);
 
-        std::string infostr;
+        std::string file_contents;
+        std::string summaryinfostr;
+        std::string detailedinfostr;
         TreeManip<Node>::TreeManipShPtr tm(new TreeManip<Node>());
         if (is_treefile && is_listfile)
             {
             //
             // Both --listfile and --treefile provided on command line
             //
-            _outf << "Read " << _treefile_names.size() << " tree file names from list file " << listfname << "\n";
-            _outf << "Read 1 tree file name from tree file " << treefname << "\n";
+            std::cout << "Read " << _treefile_names.size() << " tree file names from list file " << listfname << "\n";
+            std::cout << "Read 1 tree file name from tree file " << treefname << "\n";
 
             // process --treefile and construct majrule consensus tree
-            getTreesFromFile(treefname, skip);
+            getFileContents(file_contents, treefname);
+            getTrees(file_contents, skip);
             processTrees(tm, _ccdtree, 0, 1);
             std::vector<GalaxInfo> majrule_clade_info;
             std::vector<Split> majrule_splits;
             std::string majrule_tree;
-            estimateInfo(tm, _ccdtree, infostr, majrule_clade_info);
+            estimateInfo(tm, _ccdtree, summaryinfostr, detailedinfostr, majrule_clade_info);
             buildMajorityRuleTree(majrule_clade_info, majrule_clade_info, majrule_tree);
             writeMajruleTreefile("majrule", majrule_tree);
 
@@ -891,13 +1050,15 @@ void Galax::run(std::string treefname, std::string listfname, unsigned skip, boo
             _tree_counts.clear();
             BOOST_FOREACH(std::string & tree_file_name, _treefile_names)
                 {
-                getTreesFromFile(tree_file_name, skip);
+                file_contents.clear();
+                getFileContents(file_contents, tree_file_name);
+                getTrees(file_contents, skip);
                 processTrees(tm, _ccdlist, subset_index++, (unsigned)_treefile_names.size());
                 }
             std::vector<GalaxInfo> merged_clade_info;
             std::vector<Split> merged_splits;
             std::string merged_tree;
-            estimateInfo(tm, _ccdlist, infostr, merged_clade_info);
+            estimateInfo(tm, _ccdlist, summaryinfostr, detailedinfostr, merged_clade_info);
             buildMajorityRuleTree(merged_clade_info, merged_clade_info, merged_tree);
             writeMajruleTreefile("merged", merged_tree);
 
@@ -911,15 +1072,16 @@ void Galax::run(std::string treefname, std::string listfname, unsigned skip, boo
             //
             // Only --treefile provided on command line
             //
-            _outf << "Read 1 tree file name from tree file " << treefname << "\n";
-
-            getTreesFromFile(treefname, skip);
+            getFileContents(file_contents, treefname);
+            getTrees(file_contents, skip);
             processTrees(tm, _ccdtree, 0, 1);
+
+            std::cout << boost::str(boost::format("Read %d trees from tree file %s\n") % _newicks.size() % treefname);
 
             std::vector<GalaxInfo> majrule_clade_info;
             std::vector<Split> majrule_splits;
             std::string majrule_tree;
-            estimateInfo(tm, _ccdtree, infostr, majrule_clade_info);
+            estimateInfo(tm, _ccdtree, summaryinfostr, detailedinfostr, majrule_clade_info);
             buildMajorityRuleTree(majrule_clade_info, majrule_clade_info, majrule_tree);
             writeMajruleTreefile("majrule", majrule_tree);
             if (_rooted)
@@ -933,33 +1095,37 @@ void Galax::run(std::string treefname, std::string listfname, unsigned skip, boo
             //
             // Only --listfile provided on command line
             //
-            _outf << "Read " << _treefile_names.size() << " tree file names from list file " << listfname << "\n";
+            std::cout << boost::str(boost::format("Read %d trees from list file %s\n") % _treefile_names.size() % listfname);
 
             unsigned subset_index = 0;
             BOOST_FOREACH(std::string & tree_file_name, _treefile_names)
                 {
-                getTreesFromFile(tree_file_name, skip);
+                file_contents.clear();
+                getFileContents(file_contents, tree_file_name);
+                getTrees(file_contents, skip);
                 processTrees(tm, _ccdlist, subset_index++, (unsigned)_treefile_names.size());
+                std::cout << boost::str(boost::format("Read %d trees from tree file %s\n") % _newicks.size() % tree_file_name);
                 }
             std::vector<GalaxInfo> merged_clade_info;
             std::vector<Split> merged_splits;
             std::string merged_tree;
-            estimateInfo(tm, _ccdlist, infostr, merged_clade_info);
+            estimateInfo(tm, _ccdlist, summaryinfostr, detailedinfostr, merged_clade_info);
             buildMajorityRuleTree(merged_clade_info, merged_clade_info, merged_tree);
             writeMajruleTreefile("merged", merged_tree);
             }
 
         if (_rooted)
-            _outf << "Input trees assumed to be rooted\n";
+            std::cout << "Input trees assumed to be rooted\n";
         else
             {
-            _outf << "Input trees assumed to be unrooted\n";
-            _outf << boost::str(boost::format("Each input tree was rooted at outgroup taxon %d (\"%s\")\n") % _outgroup % _translate[_outgroup]);
+            std::cout << "Input trees assumed to be unrooted\n";
+            std::cout << boost::str(boost::format("Each input tree was rooted at outgroup taxon %d (\"%s\")\n") % _outgroup % _translate[_outgroup]);
             }
 
-        _outf << "\n" << infostr;
+        _outf << "\n" << summaryinfostr;
+        _detailsf << "\n" << detailedinfostr;
 
-        _outf << "\nRequired " << _total_seconds << " total seconds" << std::endl;
+        std::cout << "\nRequired " << _total_seconds << " total seconds" << std::endl;
         }
 	catch(XGalax x)
 		{

@@ -239,7 +239,7 @@
 				);
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
-					/Users/plewis/Documents/libraries/boostlib/lib,
+					"/Users/plewis/Documents/libraries/boostlib-anaconda/lib",
 				);
 				OTHER_LDFLAGS = (
 					"$(BOOST_ROOT)/lib/libboost_program_options.a",
@@ -262,7 +262,7 @@
 				);
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
-					/Users/plewis/Documents/libraries/boostlib/lib,
+					"/Users/plewis/Documents/libraries/boostlib-anaconda/lib",
 				);
 				OTHER_LDFLAGS = (
 					"$(BOOST_ROOT)/lib/libboost_program_options.a",

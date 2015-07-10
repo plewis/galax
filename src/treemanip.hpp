@@ -157,6 +157,8 @@ inline void TreeManip<T>::refreshPreorder(T * root_node)
 
 	if (!root_node)
 		return;
+
+    int min_tip_number = 0;
         
     T * first_preorder = root_node->_left_child;
         
@@ -170,8 +172,11 @@ inline void TreeManip<T>::refreshPreorder(T * root_node)
         {
         if (!nd->_left_child && !nd->_right_sib)
             {
-            // nd has no children and no siblings, so next preorder is the right sibling of 
+            // nd has no children (it is a tip) and no siblings, so next preorder is the right sibling of
             // the first ancestral node that has a right sibling.
+            if (nd->_number < min_tip_number)
+                min_tip_number = nd->_number;
+
             T * anc = nd->_parent;
             while (anc && !anc->_right_sib)
                 anc = anc->_parent;
@@ -190,6 +195,8 @@ inline void TreeManip<T>::refreshPreorder(T * root_node)
         else if (nd->_right_sib && !nd->_left_child)
             {
             // nd has no children (it is a tip), but does have a sibling on its right
+            if (nd->_number < min_tip_number)
+                min_tip_number = nd->_number;
             _tree->_preorder.push_back(nd->_right_sib);
             nd = nd->_right_sib;
             }
@@ -207,11 +214,17 @@ inline void TreeManip<T>::refreshPreorder(T * root_node)
             }
             
         }   // end while loop
+
+    // If min_tip_number is less than 0, add -min_tip_number to each tip node number
+    // so that the smallest tip number is 0
+    assert(min_tip_number == 0 || min_tip_number == -1);
+    int offset = -min_tip_number;
         
     // renumber internal nodes in postorder sequence and update _split data members along the way
     int curr_internal = _tree->_nleaves;
     if (_tree->_is_rooted)
         ++curr_internal;
+
     for (typename std::vector<T *>::reverse_iterator rit = _tree->_preorder.rbegin(); rit != _tree->_preorder.rend(); ++rit)
         {
         T * nd = *rit;
@@ -243,6 +256,9 @@ inline void TreeManip<T>::refreshPreorder(T * root_node)
         else
             {
             // nd is a leaf node
+            nd->_number += offset;
+            assert(nd->_number >= 0);
+            
             parent->_height += (nd->_height + nd->_edge_length);
 
             // set split
@@ -709,6 +725,7 @@ inline void TreeManip<T>::buildFromNewick(const std::string newick, unsigned roo
 					if (previous == Prev_Tok_Colon)
 						{
 						// Edge length expected (e.g. "235", "0.12345", "1.7e-3")
+                        // May be multiple edge lengths if created by BayesPhylogenies (e.g. "0.0262473566|0.0262473566")
                         std::string::const_iterator j = i;
                         for (; i != newick.end(); ++i)
 							{
@@ -718,6 +735,12 @@ inline void TreeManip<T>::buildFromNewick(const std::string newick, unsigned roo
 								--i;
 								break;
 								}
+                            else if (ch == '|')
+                                {
+                                // this version saves only the last edge length when multiple edge lengths are supplied,
+                                j = ++i;
+                                ch = *i;
+                                }
 							bool valid = (ch =='e' || ch == 'E' || ch =='.' || ch == '-' || ch == '+' || isdigit(ch));
 							if (!valid)
                                 throw XGalax(boost::str(boost::format("Invalid branch length character (%c) at position %d in tree description") % ch % (unsigned)std::distance(newick_start, i)));
@@ -753,11 +776,11 @@ inline void TreeManip<T>::buildFromNewick(const std::string newick, unsigned roo
 							{
 #ifdef QUICK_AND_DIRTY_NODE_NUMBERS
                             int x = atoi(nd->_name.c_str());
-                            if (x == 0)
-                                {
-                                std::cerr << "problematic tree description: " << nd->_name << std::endl;
-                                }
-                            assert(x > 0);
+                            //if (x == 0)
+                            //    {
+                            //    std::cerr << "problematic tree description: " << nd->_name << std::endl;
+                            //    }
+                            //assert(x > 0);
                             nd->_number = x - 1;
 #else
                             extractNodeNumberFromName(nd, used);
@@ -895,11 +918,15 @@ inline void TreeManip<T>::buildFromSplitVector(const std::vector<Split> & split_
         T * root = subroot->_parent;
 
         // Loop over all splits, pulling out taxa specified under a new ancestral node for each
-        unsigned tmp = 0;
         BOOST_FOREACH(Split & s, splits)
             {
+            // The first split should correspond to the subroot, but we continue here because it makes
+            // no sense to detach and then reattach all leaf nodes
+            if (subroot->_split.subsumedIn(s))
+                continue;
+
             // Create a new node to hold the taxa in the current split
-            assert(curr_node_index < _tree->_nodes.size());
+            assert(curr_node_index + 1 < _tree->_nodes.size());
             T * anc = &_tree->_nodes[++curr_node_index];
             assert(anc);
             anc->_edge_length = 1.0;
@@ -909,13 +936,6 @@ inline void TreeManip<T>::buildFromSplitVector(const std::vector<Split> & split_
             double c = s.getCertainty();
             std::string str = boost::str(boost::format("P=%.5f I=%.5f D=%.5f IC=%.5f") % w % i % d % c);
             anc->_edge_support = str;
-
-            refreshPreorder(root);
-
-            // The first split should correspond to the subroot, but we continue here because it makes
-            // no sense to detach and then reattach all leaf nodes
-            if (subroot->_split.subsumedIn(s))
-                continue;
 
             // Detach nodes in s from tree and add each to anc
             for (typename std::vector<T *>::iterator nit = _tree->_preorder.begin(); nit != _tree->_preorder.end();)
@@ -953,8 +973,7 @@ inline void TreeManip<T>::buildFromSplitVector(const std::vector<Split> & split_
             anc->_right_sib = subroot->_left_child;
             anc->_parent = subroot;
             subroot->_left_child = anc;
-
-            ++tmp;
+            refreshPreorder(root);
             }
         }
 	catch(XGalax x)
@@ -1005,7 +1024,8 @@ inline std::string TreeManip<T>::makeNewick(unsigned ndecimals, bool edge_suppor
 
         // In an unrooted tree, where the root node is actually an upside-down extant tip,
         // the root node's edge length is actually held by its only child
-        s += boost::str(edgelen_format % nd->_edge_length);
+        if (ndecimals > 0)
+            s += boost::str(edgelen_format % nd->_edge_length);
         //std::cerr << s << std::endl;
 		}
 
@@ -1032,7 +1052,8 @@ inline std::string TreeManip<T>::makeNewick(unsigned ndecimals, bool edge_suppor
 			// nd is a leaf
 			// Output tip node number plus 1, then the edge length
             s += boost::str(boost::format("%d") % (nd->_number + 1));
-            s += boost::str(edgelen_format % nd->_edge_length);
+            if (ndecimals > 0)
+                s += boost::str(edgelen_format % nd->_edge_length);
             //std::cerr << s << std::endl;
 
 			if (nd->_right_sib)
@@ -1053,7 +1074,7 @@ inline std::string TreeManip<T>::makeNewick(unsigned ndecimals, bool edge_suppor
                     s += ")";
                     if (edge_support && anc->_parent->_parent)
                         s += boost::str(edgelen_support_format % anc->_edge_support % anc->_edge_length);
-                    else
+                    else if (ndecimals > 0)
                         s += boost::str(edgelen_format % anc->_edge_length);
                     //std::cerr << s << std::endl;
                     assert(open_parens > 0);
