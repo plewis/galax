@@ -432,7 +432,7 @@ void Galax::saveDetailedInfoForClade(std::string & detailedinfostr, std::string 
         }
     }
 
-double Galax::estimateCoverage(CCDMapType & ccdmap, unsigned subset_index)
+std::pair<unsigned,double> Galax::estimateCoverage(CCDMapType & ccdmap, unsigned subset_index)
     {
     _start_time = getCurrentTime();
 
@@ -497,6 +497,10 @@ double Galax::estimateCoverage(CCDMapType & ccdmap, unsigned subset_index)
         }
     double log_coverage = max_log_product + log(sum_exp_diffs);
     double exp_log_coverage = exp(log_coverage);
+    if (exp_log_coverage - 1.0 > 1.e-8)
+        {
+        std::cerr << "*** this can't be right! exp_log_coverage = " << exp_log_coverage << std::endl;
+        }
     //std::cerr << boost::str(boost::format("max_log_product for subset %d is %.5f\n") % subset_index % max_log_product) << std::endl;
     //std::cerr << boost::str(boost::format("sum_exp_diffs for subset %d is %.5f\n") % subset_index % sum_exp_diffs) << std::endl;
     //std::cerr << boost::str(boost::format("log(coverage) for subset %d is %.5f\n") % subset_index % log_coverage) << std::endl;
@@ -507,11 +511,16 @@ double Galax::estimateCoverage(CCDMapType & ccdmap, unsigned subset_index)
     _end_time = getCurrentTime();
     _total_seconds += secondsElapsed(_start_time, _end_time);
 
-    return exp_log_coverage;
+    return std::pair<unsigned,double>(num_unique_trees, exp_log_coverage);
     }
 
-void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap, std::string & summaryinfostr, std::string & detailedinfostr, std::vector<GalaxInfo> & clade_info)
+void Galax::estimateInfo(CCDMapType & ccdmap, std::string & summaryinfostr, std::string & detailedinfostr, std::vector<GalaxInfo> & clade_info)
     {
+    // ccdmap: key = SplitVector defining (un)conditional clade, value = CountVector (counts for each subset)
+    // summaryinfostr: holds summary output over all clades
+    // detailedinfostr: holds detailed output for each clade
+    // clade_info: vector of GalaxInfo objects that is filled here and used to build and label majority rule tree later
+    
     _start_time = getCurrentTime();
 
     assert(ccdmap.size() > 0);
@@ -552,35 +561,45 @@ void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap
     std::vector<double> I(num_subsets+1, 0.0);
     std::vector<double> Ipct(num_subsets+1, 0.0);
 
-    // This vector holds cumulative I across clades for each subset plus the merged case
-    // It is not reset for each clade
+    // These vectors hold cumulative I across clades, number of unique tree topologies, and coverage for each subset plus the merged case
+    // These are not reset for each clade.
     std::vector<double> total_I(num_subsets+1, 0.0);
+    std::vector<double> unique(num_subsets+1, 0.0);
+    std::vector<double> coverage(num_subsets+1, 0.0);
 
     double total_D = 0.0;
     bool first = true;
     for (CCDMapType::iterator it = ccdmap.begin(); it != ccdmap.end(); ++it)
         {
-        // v contains either 1 split (unconditional) or 3 splits (conditional)
-        const SplitVector & v = it->first;
-
+        // *it comprises a key (SplitVector) and a value (CountVector)
+        // it->first is the key: it is a vector containing either
+        //       a) 1 split (represents and unconditional clade probability) or
+        //       b) 3 splits (represents a conditional clade probability, with
+        //          first split being parent clade and remaining two splits
+        //          representing the bipartition of that parent split)
+        // it->second is the value: it is a vector of counts, with one element for each subset
+        const SplitVector   & v     = it->first;
         std::vector<double> & count = it->second;
         double sum_counts = std::accumulate(count.begin(), count.end(), 0.0);
 
-        // Depends on ccdmap keys (split vectors) being sorted such that an entry for an unconditional clade (e.g. ABC)
-        // precedes any conditional clade entries (e.g. A|BC) that have that clade as parent. Thus, when next unconditional
-        // clade entry is encountered, we know that there are no more conditional clade entries for the previous parent
-        // clade and we can at that point compute the information for the previous parent.
+        // The following depends on ccdmap keys (split vectors) being sorted such that an
+        // entry for an unconditional clade, e.g. (ABC), precedes any conditional clade entries,
+        // e.g. (ABC,A,BC) that have that clade as parent. Thus, when next unconditional
+        // clade entry is encountered, we know that there are no more conditional clade entries
+        // for the previous parent clade and we can at that point compute the information for
+        // the previous parent.
         if (first)
             {
             first = false;
 
             // Initialize data for first clade
             assert(v.size() == 1);  // first entry should be an unconditional clade entry
-            clade = v[0];
+            clade = v[0];   // keep track of the current parent clade
 
             //POL temporary
             //std::cerr << "first clade: " << clade.createPatternRepresentation() << std::endl;
 
+            // Individual subsets
             unsigned subset_index = 0;
             BOOST_FOREACH(double subset_count, count)
                 {
@@ -597,6 +616,7 @@ void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap
             }
         else
             {
+            // Not first conditional clade entry in ccdmap
             if (v[0] == clade)
                 {
                 // Conditional clade entry whose parent is clade
@@ -632,8 +652,8 @@ void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap
                 {
                 // Just found next unconditional clade entry, so now is the time to finish computing
                 // information content for the previous clade
+                assert(v.size() == 1); // v should just only have split for parent clade
 
-                assert(v.size() == 1);
                 double sum_Ipct = 0.0;
                 for (unsigned subset_index = 0; subset_index < num_subsets; ++subset_index)
                     {
@@ -677,6 +697,7 @@ void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap
                 //POL temporary
                 //std::cerr << "next clade: " << clade.createPatternRepresentation() << std::endl;
 
+                // Individual subsets
                 unsigned subset_index = 0;
                 BOOST_FOREACH(double subset_count, count)
                     {
@@ -698,6 +719,10 @@ void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap
     double sum_Ipct = 0.0;
     for (unsigned subset_index = 0; subset_index < num_subsets; ++subset_index)
         {
+        std::pair<unsigned,double> unicov = estimateCoverage(ccdmap, subset_index);
+        unique[subset_index] = unicov.first;
+        coverage[subset_index] = unicov.second;
+
         if (clade_denom[subset_index] > 0)
             {
             w[subset_index] = clade_denom[subset_index]/_tree_counts[subset_index];
@@ -709,6 +734,10 @@ void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap
             sum_Ipct += Ipct[subset_index];
             }
         }
+
+    //std::pair<unsigned,double> unicov = estimateCoverage(ccdmap, num_subsets);
+    //unique[num_subsets] = unicov.first;
+    //coverage[num_subsets] = unicov.second;
 
     w[num_subsets] = clade_denom[num_subsets]/total_trees;
 
@@ -736,29 +765,34 @@ void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap
         {
         std::vector<double> tmp;
         tmp.push_back(total_I[subset_index]);
+        tmp.push_back(unique[subset_index]);
+        tmp.push_back(coverage[subset_index]);
         subset_info.push_back(GalaxInfo(_treefile_names[subset_index], tmp));
         }
     GalaxInfo::_sortby_index = 0;
     std::sort(subset_info.begin(), subset_info.end(), std::greater<GalaxInfo>());
 
-    const char indiv_summary[]  = "%20s %12.5f %12.5f %12.5f %12s\n";
-    const char merged_summary[] = "%20s %12s %12.5f %12.5f %12.5f\n";
+    const char indiv_summary[]  = "%20s %12.5f %12.5f %12.5f %12.5f %12s\n";
+    const char merged_summary[] = "%20s %12s %12s %12.5f %12.5f %12.5f\n";
     summaryinfostr += std::string("\nTotals\n");
-    summaryinfostr += boost::str(boost::format("%20s %12s %12s %12s %12s\n")
+    summaryinfostr += boost::str(boost::format("%20s %12s %12s %12s %12s %12s\n")
         % "treefile"
-        % "phi"
+        % "unique"
+        % "coverage"
         % "I"
         % "Ipct"
         % "D");
     unsigned subset_index = 0;
     BOOST_FOREACH(GalaxInfo & c, subset_info)
         {
-        double phi = estimateCoverage(ccdmap, subset_index);
         double info = c._value[0];
+        double unique = c._value[1];
+        double coverage = c._value[2];
         double pct = 100.0*info/total_entropy;
         summaryinfostr += boost::str(boost::format(indiv_summary)
             % c._name
-            % phi
+            % unique
+            % coverage
             % info
             % pct
             % "---");
@@ -773,6 +807,7 @@ void Galax::estimateInfo(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap
         totalIpct = (100.0*total_I[num_subsets]/total_entropy);
         summaryinfostr += boost::str(boost::format(merged_summary)
             % "merged"
+            % "---"
             % "---"
             % total_I[num_subsets]
             % (100.0*total_I[num_subsets]/total_entropy)
@@ -896,9 +931,11 @@ void Galax::buildMajorityRuleTree(std::vector<GalaxInfo> & majrule_info, std::ve
         Split split;
         split.createFromPattern(c._name);
 
-        if (w < 0.5)
+        if (w <= 0.5)
             {
             // majrule_info is sorted by w, so we can stop once we pass the 0.5 point
+            // Note the less-than-or-equals sign above: using just less-than will get you into trouble
+            // if there are muliple conflicting clades that have exactly 50% support.
             break;
             }
         else
@@ -1033,7 +1070,7 @@ void Galax::run(std::string treefname, std::string listfname, unsigned skip, boo
             std::vector<GalaxInfo> majrule_clade_info;
             std::vector<Split> majrule_splits;
             std::string majrule_tree;
-            estimateInfo(tm, _ccdtree, summaryinfostr, detailedinfostr, majrule_clade_info);
+            estimateInfo(_ccdtree, summaryinfostr, detailedinfostr, majrule_clade_info);
             buildMajorityRuleTree(majrule_clade_info, majrule_clade_info, majrule_tree);
             writeMajruleTreefile("majrule", majrule_tree);
 
@@ -1051,7 +1088,7 @@ void Galax::run(std::string treefname, std::string listfname, unsigned skip, boo
             std::vector<GalaxInfo> merged_clade_info;
             std::vector<Split> merged_splits;
             std::string merged_tree;
-            estimateInfo(tm, _ccdlist, summaryinfostr, detailedinfostr, merged_clade_info);
+            estimateInfo(_ccdlist, summaryinfostr, detailedinfostr, merged_clade_info);
             buildMajorityRuleTree(merged_clade_info, merged_clade_info, merged_tree);
             writeMajruleTreefile("merged", merged_tree);
 
@@ -1074,7 +1111,7 @@ void Galax::run(std::string treefname, std::string listfname, unsigned skip, boo
             std::vector<GalaxInfo> majrule_clade_info;
             std::vector<Split> majrule_splits;
             std::string majrule_tree;
-            estimateInfo(tm, _ccdtree, summaryinfostr, detailedinfostr, majrule_clade_info);
+            estimateInfo(_ccdtree, summaryinfostr, detailedinfostr, majrule_clade_info);
             buildMajorityRuleTree(majrule_clade_info, majrule_clade_info, majrule_tree);
             writeMajruleTreefile("majrule", majrule_tree);
             if (_rooted)
@@ -1102,7 +1139,7 @@ void Galax::run(std::string treefname, std::string listfname, unsigned skip, boo
             std::vector<GalaxInfo> merged_clade_info;
             std::vector<Split> merged_splits;
             std::string merged_tree;
-            estimateInfo(tm, _ccdlist, summaryinfostr, detailedinfostr, merged_clade_info);
+            estimateInfo(_ccdlist, summaryinfostr, detailedinfostr, merged_clade_info);
             buildMajorityRuleTree(merged_clade_info, merged_clade_info, merged_tree);
             writeMajruleTreefile("merged", merged_tree);
             }

@@ -23,7 +23,11 @@ class GalaxInfo
         bool                operator>(const GalaxInfo & other) const {return (bool)(_value[_sortby_index] > other._value[_sortby_index]);}
 
 		std::string         _name;
-        std::vector<double> _value; // 0=Ipct, 1=D, 2=w, 3=I
+
+        // _value for clades:  0=Ipct, 1=D, 2=w, 3=I
+        // _value for subsets: 0=Ipct, 1=unique, 2=coverage
+        std::vector<double> _value;
+
 
         static unsigned     _sortby_index;
 	};

@@ -44,7 +44,7 @@
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       launchStyle = "0"
       useCustomWorkingDirectory = "YES"
-      customWorkingDirectory = "/Users/plewis/Documents/manuscripts/to-be-written/bayesinfo/manuscript/secondtry/supplementary/figure2-galax"
+      customWorkingDirectory = "/Users/plewis/Documents/manuscripts/to-be-written/bayesinfo/manuscript/secondtry/supplementary-saved/figure3-rokas/datasets"
       buildConfiguration = "Debug"
       ignoresPersistentStateOnLaunch = "NO"
       debugDocumentVersioning = "YES"
@@ -61,11 +61,11 @@
       </BuildableProductRunnable>
       <CommandLineArguments>
          <CommandLineArgument
-            argument = "--treefile"
+            argument = "--listfile"
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "figure2.tre"
+            argument = "galax.txt"
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
@@ -73,15 +73,15 @@
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "0"
+            argument = "1"
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "--outgroup"
+            argument = "--outfile"
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "8"
+            argument = "full"
             isEnabled = "YES">
          </CommandLineArgument>
       </CommandLineArguments>

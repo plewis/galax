@@ -24,6 +24,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		D16D4ED51B519F0A00155165 /* galaxdata.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; name = galaxdata.hpp; path = ../src/galaxdata.hpp; sourceTree = "<group>"; };
 		D1CE62111A59E9BA00A4A50E /* galaxinfo.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; name = galaxinfo.hpp; path = ../src/galaxinfo.hpp; sourceTree = "<group>"; };
 		D1D47CBB1A0321E500D07933 /* galax */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = galax; sourceTree = BUILT_PRODUCTS_DIR; };
 		D1D47CC61A03222700D07933 /* galax.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = galax.cpp; path = ../src/galax.cpp; sourceTree = "<group>"; };
@@ -67,6 +68,7 @@
 		D1D47CC51A03220E00D07933 /* src */ = {
 			isa = PBXGroup;
 			children = (
+				D16D4ED51B519F0A00155165 /* galaxdata.hpp */,
 				D1CE62111A59E9BA00A4A50E /* galaxinfo.hpp */,
 				D1D47CC81A03222700D07933 /* galaxutil.hpp */,
 				D1D47CCA1A03222700D07933 /* node.hpp */,

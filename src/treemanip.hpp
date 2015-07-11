@@ -502,6 +502,7 @@ inline void TreeManip<T>::addToCCDMap(CCDMapType & ccdmap, SubsetTreeSetType & t
 	{
     if (treeCCD.size() == 0)
         {
+        //std::cerr << "~~~ Initializing treeCCD ~~~" << std::endl;
         for (unsigned i = 0; i < num_subsets; ++i)
             {
             TreeIDSetType v;
@@ -551,6 +552,7 @@ inline void TreeManip<T>::addToCCDMap(CCDMapType & ccdmap, SubsetTreeSetType & t
         }   // BOOST_FOREACH
 
 
+    std::sort(tree_vector.begin(), tree_vector.end());
     treeCCD[subset_index].insert(tree_vector);
         
     }
@@ -944,6 +946,8 @@ inline void TreeManip<T>::buildFromSplitVector(const std::vector<Split> & split_
         // Loop over all splits, pulling out taxa specified under a new ancestral node for each
         BOOST_FOREACH(Split & s, splits)
             {
+            //std::cerr << boost::str(boost::format("%12.5f %s") % s.getWeight() % s.createPatternRepresentation()) << std::endl;
+
             // The first split should correspond to the subroot, but we continue here because it makes
             // no sense to detach and then reattach all leaf nodes
             if (subroot->_split.subsumedIn(s))
