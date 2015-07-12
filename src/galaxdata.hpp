@@ -38,6 +38,7 @@ class GalaxData
         void                        conditionalClade(const SplitVector & v, CountVector & c);
         std::vector<double>         finalizeClade(std::string & detailedinfostr);
         std::pair<unsigned,double>  estimateCoverageForSubset(CCDMapType & ccdmap, SubsetTreeSetType & treeCCD, unsigned subset_index);
+        std::pair<unsigned,double>  estimateMergedCoverage(CCDMapType & ccdmap, SubsetTreeSetType & treeCCD);
         void                        estimateCoverage(CCDMapType & ccdmap, SubsetTreeSetType & treeCCD);
 
         void                        saveDetailedInfoForClade(std::string & detailedinfostr, double D);
@@ -245,6 +246,7 @@ std::pair<unsigned,double> GalaxData::estimateCoverageForSubset(CCDMapType & ccd
     {
     double max_log_product = 0.0;
     std::vector< double > log_products;
+
     const TreeIDSetType & tree_set = treeCCD[subset_index];
     unsigned num_unique_trees = (unsigned)tree_set.size();
 
@@ -286,6 +288,70 @@ std::pair<unsigned,double> GalaxData::estimateCoverageForSubset(CCDMapType & ccd
     return std::pair<unsigned,double>(num_unique_trees, exp_log_coverage);
     }
     
+std::pair<unsigned,double> GalaxData::estimateMergedCoverage(CCDMapType & ccdmap, SubsetTreeSetType & treeCCD)
+    {
+    // This function is very similar to GalaxData::estimateCoverageForSubset, but decided to
+    // separate it out because of the need to construct the merged tree set and the fact that
+    // ccdmap stores only counts for individual subsets, not the merged case, so the sums must
+    // be done ad hoc. All this would lead to a very difficult-to-understand combined function.
+
+    double max_log_product = 0.0;
+    std::vector< double > log_products;
+
+    // Compute merged tree set
+    TreeIDSetType tree_set;
+    for (unsigned i = 0; i < _num_subsets; ++i)
+        {
+        TreeIDSetType & treeset_subseti = treeCCD[i];
+        for (TreeIDSetType::iterator treeid_iter = treeset_subseti.begin(); treeid_iter != treeset_subseti.end(); ++treeid_iter)
+            {
+            const TreeIDType & tree_id = (*treeid_iter);
+            tree_set.insert(tree_id);
+            }
+        }
+
+    unsigned num_unique_trees = (unsigned)tree_set.size();
+
+    for (TreeIDSetType::iterator tree_iter = tree_set.begin(); tree_iter != tree_set.end(); ++tree_iter)
+        {
+        const TreeIDType & tree_id = *tree_iter;
+
+        double log_product = 0.0;
+        for (TreeIDType::const_iterator ccd_iter = tree_id.begin(); ccd_iter != tree_id.end(); ++ccd_iter)
+            {
+            const SplitVector & v = *ccd_iter;
+            const CountVector & cv = ccdmap[v];
+            double numer_count = std::accumulate(cv.begin(), cv.end(), 0.0);
+
+            SplitVector mother;
+            mother.push_back(v[0]);
+            const CountVector & cvmother = ccdmap[mother];
+            double denom_count = std::accumulate(cvmother.begin(), cvmother.end(), 0.0);
+
+            log_product += log(numer_count);
+            log_product -= log(denom_count);
+            }
+        if (log_product > max_log_product)
+            max_log_product = log_product;
+        log_products.push_back(log_product);
+        }
+
+    // compute coverage for this subset
+    double sum_exp_diffs = 0.0;
+    BOOST_FOREACH(double logprod, log_products)
+        {
+        sum_exp_diffs += exp(logprod - max_log_product);
+        }
+    double log_coverage = max_log_product + log(sum_exp_diffs);
+    double exp_log_coverage = exp(log_coverage);
+    if (exp_log_coverage - 1.0 > 1.e-8)
+        {
+        std::cerr << "*** this can't be right! exp_log_coverage = " << exp_log_coverage << std::endl;
+        }
+
+    return std::pair<unsigned,double>(num_unique_trees, exp_log_coverage);
+    }
+    
 void GalaxData::estimateCoverage(CCDMapType & ccdmap, SubsetTreeSetType & treeCCD)
     {
     std::pair<unsigned,double> unicov;
@@ -299,11 +365,9 @@ void GalaxData::estimateCoverage(CCDMapType & ccdmap, SubsetTreeSetType & treeCC
         }
 
     // Merged case
-#if 0
-    unicov = estimateCoverageForSubset(ccdmap, treeCCD, _num_subsets);
+    unicov = estimateMergedCoverage(ccdmap, treeCCD);
     _unique[_num_subsets] = unicov.first;
     _coverage[_num_subsets] = unicov.second;
-#endif
     }
 
 void GalaxData::reportTotals(std::string & infostr, std::vector<GalaxInfo> & clade_info)
@@ -321,8 +385,8 @@ void GalaxData::reportTotals(std::string & infostr, std::vector<GalaxInfo> & cla
     GalaxInfo::_sortby_index = 0;
     std::sort(subset_info.begin(), subset_info.end(), std::greater<GalaxInfo>());
 
-    const char indiv_summary[]  = "%20s %12.5f %12.5f %12.5f %12.5f %12s\n";
-    const char merged_summary[] = "%20s %12s %12s %12.5f %12.5f %12.5f\n";
+    const char indiv_summary[]  = "%20s %12d %12.5f %12.5f %12.5f %12s\n";
+    const char merged_summary[] = "%20s %12d %12.5f %12.5f %12.5f %12.5f\n";
     infostr += std::string("\nTotals\n");
     infostr += boost::str(boost::format("%20s %12s %12s %12s %12s %12s\n")
         % "treefile"
@@ -340,7 +404,7 @@ void GalaxData::reportTotals(std::string & infostr, std::vector<GalaxInfo> & cla
         double pct = 100.0*info/_total_entropy;
         infostr += boost::str(boost::format(indiv_summary)
             % c._name
-            % unique
+            % int(unique)
             % coverage
             % info
             % pct
@@ -351,13 +415,15 @@ void GalaxData::reportTotals(std::string & infostr, std::vector<GalaxInfo> & cla
     // Sort clades for merged case by Ipct, D, and w and save majrule tree
     double totalIpct = 0.0;
     double cumpct = 0.0;
+    double unique = _unique[_num_subsets];
+    double coverage = _coverage[_num_subsets];
     if (_num_subsets > 1)
         {
         totalIpct = (100.0*_total_I[_num_subsets]/_total_entropy);
         infostr += boost::str(boost::format(merged_summary)
             % "merged"
-            % "---"
-            % "---"
+            % int(unique)
+            % coverage
             % _total_I[_num_subsets]
             % (100.0*_total_I[_num_subsets]/_total_entropy)
             % _total_D);

@@ -35,6 +35,7 @@ class Galax
         void                                estimateInfo(CCDMapType & ccdmap, std::string & summaryinfostr, std::string & detailedinfostr, std::vector<GalaxInfo> & clade_info);
         void                                buildMajorityRuleTree(std::vector<GalaxInfo> & majrule_info, std::vector<GalaxInfo> & annotate_info, std::string & majrule_newick);
         void                                writeMajruleTreefile(std::string fnprefix, std::string & majrule_newick);
+        void                                initTreeCCD(unsigned num_subsets);
         void                                processTrees(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap, unsigned subset_index, unsigned num_subsets);
         void                                getTrees(std::string file_contents, unsigned skip);
         bool                                isNexusFile(const std::string & file_contents);
@@ -71,7 +72,7 @@ class Galax
         CCDMapType                          _ccdlist;   // _ccdlist[i][j] stores conditional clade info for clade i, subset j, for trees specified by --listfile
         CCDMapType                          _ccdtree;   // _ccdtree[i][0] stores conditional clade info for clade i for trees specified by --treefile
 
-        SubsetTreeSetType                   _treeCCD;  
+        SubsetTreeSetType                   _treeCCD;  // _treeCCD[i] holds "tree ID" (list of cond. clades) for each tree in subset i
     };
 
 }

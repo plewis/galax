@@ -500,17 +500,7 @@ inline void TreeManip<T>::addToProfile(TimeVector & profile_times, WeightVector 
 template <class T>
 inline void TreeManip<T>::addToCCDMap(CCDMapType & ccdmap, SubsetTreeSetType & treeCCD, unsigned subset_index, unsigned num_subsets)
 	{
-    if (treeCCD.size() == 0)
-        {
-        //std::cerr << "~~~ Initializing treeCCD ~~~" << std::endl;
-        for (unsigned i = 0; i < num_subsets; ++i)
-            {
-            TreeIDSetType v;
-            treeCCD.push_back(v);
-            }
-        }
-
-    // Add a vector to hold conditional clade definitions (each of which is a SplitVector)
+    // will hold conditional clade definitions (each of which is a SplitVector) for this tree
     TreeIDType tree_vector;
 
     BOOST_FOREACH(T * nd, _tree->_preorder)
@@ -552,9 +542,11 @@ inline void TreeManip<T>::addToCCDMap(CCDMapType & ccdmap, SubsetTreeSetType & t
         }   // BOOST_FOREACH
 
 
+    // tree_vector now contains a SplitVector representation of every non-trivial
+    // conditional clade combination in the tree. Add this "tree ID" to treeCCD for this subset
+    // so that later we can estimate the posterior for this tree topology using the CCD
     std::sort(tree_vector.begin(), tree_vector.end());
     treeCCD[subset_index].insert(tree_vector);
-        
     }
 
 #define QUICK_AND_DIRTY_NODE_NUMBERS

@@ -594,6 +594,17 @@ void Galax::writeMajruleTreefile(std::string fnprefix, std::string & majrule_new
     _total_seconds += secondsElapsed(_start_time, _end_time);
     }
 
+void Galax::initTreeCCD(unsigned num_subsets)
+    {
+    // initialize _treeCCD, which will hold tree IDs for all unique tree topologies in each subset
+    _treeCCD.clear();
+    for (unsigned i = 0; i <= num_subsets; ++i)
+        {
+        TreeIDSetType v;
+        _treeCCD.push_back(v);
+        }
+    }
+
 void Galax::run(std::string treefname, std::string listfname, unsigned skip, bool rooted, unsigned outgroup_taxon)
     {
     assert (_ALLSUBSETS == (unsigned)(-1));
@@ -622,6 +633,7 @@ void Galax::run(std::string treefname, std::string listfname, unsigned skip, boo
         std::string summaryinfostr;
         std::string detailedinfostr;
         TreeManip<Node>::TreeManipShPtr tm(new TreeManip<Node>());
+#if 0
         if (is_treefile && is_listfile)
             {
             //
@@ -633,6 +645,7 @@ void Galax::run(std::string treefname, std::string listfname, unsigned skip, boo
             // process --treefile and construct majrule consensus tree
             getFileContents(file_contents, treefname);
             getTrees(file_contents, skip);
+            initTreeCCD(1);
             processTrees(tm, _ccdtree, 0, 1);
             std::vector<GalaxInfo> majrule_clade_info;
             std::vector<Split> majrule_splits;
@@ -643,14 +656,16 @@ void Galax::run(std::string treefname, std::string listfname, unsigned skip, boo
 
             // process --listfile and construct majrule consensus tree for merged trees
             // note: infostr is overwritten
-            unsigned subset_index = 0;
             _tree_counts.clear();
+            unsigned subset_index = 0;
+            unsigned num_subsets = (unsigned)_treefile_names.size();
+            initTreeCCD(num_subsets);
             BOOST_FOREACH(std::string & tree_file_name, _treefile_names)
                 {
                 file_contents.clear();
                 getFileContents(file_contents, tree_file_name);
                 getTrees(file_contents, skip);
-                processTrees(tm, _ccdlist, subset_index++, (unsigned)_treefile_names.size());
+                processTrees(tm, _ccdlist, subset_index++, num_subsets);
                 }
             std::vector<GalaxInfo> merged_clade_info;
             std::vector<Split> merged_splits;
@@ -664,13 +679,17 @@ void Galax::run(std::string treefname, std::string listfname, unsigned skip, boo
             buildMajorityRuleTree(majrule_clade_info, merged_clade_info, majrule_merged_tree);
             writeMajruleTreefile("majrule-merged", majrule_merged_tree);
             }
-        else if (is_treefile)
+        else
+#endif
+        if (is_treefile)
             {
             //
-            // Only --treefile provided on command line
+            // --treefile provided on command line
             //
             getFileContents(file_contents, treefname);
             getTrees(file_contents, skip);
+            initTreeCCD(1);
+            _ccdtree.clear();
             processTrees(tm, _ccdtree, 0, 1);
 
             std::cout << boost::str(boost::format("Read %d trees from tree file %s\n") % _newicks.size() % treefname);
@@ -690,11 +709,14 @@ void Galax::run(std::string treefname, std::string listfname, unsigned skip, boo
         else
             {
             //
-            // Only --listfile provided on command line
+            // --listfile provided on command line
             //
             std::cout << boost::str(boost::format("Read %d trees from list file %s\n") % _treefile_names.size() % listfname);
 
             unsigned subset_index = 0;
+            unsigned num_subsets = (unsigned)_treefile_names.size();
+            initTreeCCD(num_subsets);
+            _ccdlist.clear();
             BOOST_FOREACH(std::string & tree_file_name, _treefile_names)
                 {
                 file_contents.clear();
