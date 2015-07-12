@@ -32,7 +32,6 @@ class Galax
 
         void                                debugShowCCDMap(CCDMapType & ccdmap, unsigned subset_index);
         void                                saveDetailedInfoForClade(std::string & detailedinfostr, std::string pattern, unsigned num_subsets, unsigned total_trees, std::vector<double> & clade_Hp, std::vector<double> & clade_H, std::vector<double> & w, std::vector<double> & I, std::vector<double> & Ipct, double D);
-        std::pair<unsigned,double>          estimateCoverage(CCDMapType & ccdmap, unsigned subset_index);
         void                                estimateInfo(CCDMapType & ccdmap, std::string & summaryinfostr, std::string & detailedinfostr, std::vector<GalaxInfo> & clade_info);
         void                                buildMajorityRuleTree(std::vector<GalaxInfo> & majrule_info, std::vector<GalaxInfo> & annotate_info, std::string & majrule_newick);
         void                                writeMajruleTreefile(std::string fnprefix, std::string & majrule_newick);

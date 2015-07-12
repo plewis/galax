@@ -81,7 +81,7 @@
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "full"
+            argument = "new-full"
             isEnabled = "YES">
          </CommandLineArgument>
       </CommandLineArguments>

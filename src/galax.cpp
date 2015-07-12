@@ -13,6 +13,8 @@
 #include <boost/lambda/lambda.hpp>
 #include "galax.hpp"
 #include "galaxutil.hpp"
+#include "galaxinfo.hpp"
+#include "galaxdata.hpp"
 #include "xgalax.hpp"
 
 using namespace galax;
@@ -379,141 +381,6 @@ void Galax::debugShowCCDMap(CCDMapType & ccdmap, unsigned subset_index)
         }
     }
 
-void Galax::saveDetailedInfoForClade(std::string & detailedinfostr, std::string pattern, unsigned num_subsets, unsigned total_trees, std::vector<double> & clade_Hp, std::vector<double> & clade_H, std::vector<double> & w, std::vector<double> & I, std::vector<double> & Ipct, double D)
-    {
-    const char indiv_template[]  = "%20s %12d %12.5f %12.5f %12.5f %12.5f %12s\n";
-    const char merged_template[] = "%20s %12d %12.5f %12.5f %12.5f %12.5f %12.5f\n";
-
-    if (I[num_subsets] > 0.0)   // don't bother outputting numbers for clades with no information
-        {
-        detailedinfostr += boost::str(boost::format("\nClade %s\n") % pattern);
-        detailedinfostr += boost::str(boost::format("%20s %12s %12s %12s %12s %12s %12s\n")
-            % "treefile"
-            % "trees"
-            % "D_KL"
-            % "w"
-            % "I"
-            % "Ipct"
-            % "D");
-        }
-    for (unsigned subset_index = 0; subset_index < num_subsets; ++subset_index)
-        {
-        if (I[subset_index] > 0.0)   // don't bother outputting numbers for clades with no information
-            {
-            assert(_treefile_names.size() > 0);
-            assert(_tree_counts.size() > 0);
-            assert(clade_Hp.size() > 0);
-            assert(clade_H.size() > 0);
-            assert(w.size() > 0);
-            assert(I.size() > 0);
-            assert(Ipct.size() > 0);
-            double D_KL = clade_Hp[subset_index] - clade_H[subset_index];
-            detailedinfostr += boost::str(boost::format(indiv_template)
-                % _treefile_names[subset_index]
-                % _tree_counts[subset_index]
-                % D_KL
-                % w[subset_index]
-                % I[subset_index]
-                % Ipct[subset_index]
-                % "---");
-            }
-        if (num_subsets > 1)
-            {
-            double D_KL = clade_Hp[num_subsets] - clade_H[num_subsets];
-            detailedinfostr += boost::str(boost::format(merged_template)
-                % "merged"
-                % total_trees
-                % D_KL
-                % w[num_subsets]
-                % I[num_subsets]
-                % Ipct[num_subsets]
-                % D);
-            }
-        }
-    }
-
-std::pair<unsigned,double> Galax::estimateCoverage(CCDMapType & ccdmap, unsigned subset_index)
-    {
-    _start_time = getCurrentTime();
-
-    // typedef std::vector< SplitVector >                TreeIDType;
-    // typedef std::set< TreeIDType >                    TreeIDSetType;
-    // typedef std::vector< TreeIDSetType >              SubsetTreeSetType;
-    //
-    // _treeCCD[i] is a set of tree ID objects for subset i
-    // each tree ID is a vector of split 3-tuples comprising the conditional clades in the tree
-
-    double max_log_product = 0.0;
-    std::vector< double > log_products;
-    TreeIDSetType & tree_set = _treeCCD[subset_index];
-    unsigned num_unique_trees = (unsigned)tree_set.size();
-
-    //POL temporary
-    //std::vector< double > tree_products;
-    //unsigned tmp = 0;
-
-    for (TreeIDSetType::iterator tree_iter = tree_set.begin(); tree_iter != tree_set.end(); ++tree_iter)
-        {
-        //POL temporary
-        //std::cerr << boost::str(boost::format("tree %3d: 1.") % tmp);
-        //++tmp;
-
-        const TreeIDType & tree_id = *tree_iter;
-
-        double log_product = 0.0;
-        for (TreeIDType::const_iterator ccd_iter = tree_id.begin(); ccd_iter != tree_id.end(); ++ccd_iter)
-            {
-            const SplitVector & v = *ccd_iter;
-            double numer_count = ccdmap[v][subset_index];
-            SplitVector mother;
-            mother.push_back(v[0]);
-            double denom_count = ccdmap[mother][subset_index];
-
-            log_product += log(numer_count);
-            log_product -= log(denom_count);
-
-            //POL temporary
-            //std::cerr << "*(" << numer_count << "./" << denom_count << ".)";
-            }
-        //POL temporary
-        //double exp_log_product = exp(log_product);
-        //tree_products.push_back(exp_log_product);
-        //std::cerr << boost::str(boost::format(" = %.5f") % exp_log_product) << std::endl;
-
-        if (log_product > max_log_product)
-            max_log_product = log_product;
-        log_products.push_back(log_product);
-        }
-
-    //POL temporary
-    //double coverage = std::accumulate(tree_products.begin(), tree_products.end(), 0.0);
-    //std::cerr << boost::str(boost::format("coverage for subset %d is %.5f\n") % subset_index % coverage) << std::endl;
-
-    // compute coverage for this subset
-    double sum_exp_diffs = 0.0;
-    BOOST_FOREACH(double logprod, log_products)
-        {
-        sum_exp_diffs += exp(logprod - max_log_product);
-        }
-    double log_coverage = max_log_product + log(sum_exp_diffs);
-    double exp_log_coverage = exp(log_coverage);
-    if (exp_log_coverage - 1.0 > 1.e-8)
-        {
-        std::cerr << "*** this can't be right! exp_log_coverage = " << exp_log_coverage << std::endl;
-        }
-    //std::cerr << boost::str(boost::format("max_log_product for subset %d is %.5f\n") % subset_index % max_log_product) << std::endl;
-    //std::cerr << boost::str(boost::format("sum_exp_diffs for subset %d is %.5f\n") % subset_index % sum_exp_diffs) << std::endl;
-    //std::cerr << boost::str(boost::format("log(coverage) for subset %d is %.5f\n") % subset_index % log_coverage) << std::endl;
-    //summaryinfostr += boost::str(boost::format("%d unique tree topologies for subset %d\n") % num_unique_trees % subset_index);
-    //summaryinfostr += boost::str(boost::format("log(coverage) for subset %d is %.5f\n") % subset_index % log_coverage);
-    //summaryinfostr += boost::str(boost::format("coverage for subset %d is %.5f\n") % subset_index % exp_log_coverage);
-
-    _end_time = getCurrentTime();
-    _total_seconds += secondsElapsed(_start_time, _end_time);
-
-    return std::pair<unsigned,double>(num_unique_trees, exp_log_coverage);
-    }
-
 void Galax::estimateInfo(CCDMapType & ccdmap, std::string & summaryinfostr, std::string & detailedinfostr, std::vector<GalaxInfo> & clade_info)
     {
     // ccdmap: key = SplitVector defining (un)conditional clade, value = CountVector (counts for each subset)
@@ -524,51 +391,30 @@ void Galax::estimateInfo(CCDMapType & ccdmap, std::string & summaryinfostr, std:
     _start_time = getCurrentTime();
 
     assert(ccdmap.size() > 0);
+    Split clade;
+    clade_info.clear();
+    bool first = true;
+    std::vector<double> tmp;
 
-    unsigned num_subsets = (unsigned)_tree_counts.size();
-    unsigned total_trees = std::accumulate(_tree_counts.begin(), _tree_counts.end(), 0);
+    // Create a GalaxData object to so most of the work
+    unsigned ntaxa = (unsigned)_translate.size();
+    GalaxData gd(_tree_counts, _treefile_names, (_rooted ? ntaxa : ntaxa - 1));
 
-    // Determine maximum possible entropy
-    Split first_clade = (ccdmap.begin()->first)[0];
-    unsigned ntaxa = first_clade.countOnBits() + first_clade.countOffBits();
-    if (!_rooted)
-        ntaxa -= 1;
-    double total_entropy = lognrooted(ntaxa);
+    //unsigned total_trees = std::accumulate(_tree_counts.begin(), _tree_counts.end(), 0);
 
+    // Provide a key to the taxa in split representations in both output files
     std::string tmpstr = "Order of taxa in split representations:\n";
     typedef std::pair<unsigned, std::string> translate_map_type;
     BOOST_FOREACH(const translate_map_type & translate_key_value, _translate)
         {
         tmpstr += boost::str(boost::format("%12d  %s\n") % translate_key_value.first % translate_key_value.second);
         }
-
     summaryinfostr = tmpstr;
     detailedinfostr = tmpstr;
     detailedinfostr += "\nLindley Information\n";
     detailedinfostr += boost::str(boost::format("  Number of taxa in ingroup: %d\n") % ntaxa);
-    detailedinfostr += boost::str(boost::format("  Total prior entropy: %.5f\n") % total_entropy);
+    detailedinfostr += boost::str(boost::format("  Total prior entropy: %.5f\n") % gd.getTotalEntropy());
 
-    Split clade;
-    clade_info.clear();
-
-    // These vectors store information for one particular clade for each subset plus the merged case
-    // All of these vectors are reinitialized for every new clade: not currently storing all information
-    // for every subset-clade combination
-    std::vector<double> clade_H(num_subsets+1, 0.0);
-    std::vector<double> clade_Hp(num_subsets+1, 0.0);
-    std::vector<double> clade_denom(num_subsets+1, 0.0);
-    std::vector<double> w(num_subsets+1, 0.0);
-    std::vector<double> I(num_subsets+1, 0.0);
-    std::vector<double> Ipct(num_subsets+1, 0.0);
-
-    // These vectors hold cumulative I across clades, number of unique tree topologies, and coverage for each subset plus the merged case
-    // These are not reset for each clade.
-    std::vector<double> total_I(num_subsets+1, 0.0);
-    std::vector<double> unique(num_subsets+1, 0.0);
-    std::vector<double> coverage(num_subsets+1, 0.0);
-
-    double total_D = 0.0;
-    bool first = true;
     for (CCDMapType::iterator it = ccdmap.begin(); it != ccdmap.end(); ++it)
         {
         // *it comprises a key (SplitVector) and a value (CountVector)
@@ -578,9 +424,9 @@ void Galax::estimateInfo(CCDMapType & ccdmap, std::string & summaryinfostr, std:
         //          first split being parent clade and remaining two splits
         //          representing the bipartition of that parent split)
         // it->second is the value: it is a vector of counts, with one element for each subset
-        const SplitVector   & v     = it->first;
-        std::vector<double> & count = it->second;
-        double sum_counts = std::accumulate(count.begin(), count.end(), 0.0);
+        //const SplitVector   & v     = it->first;
+        //std::vector<double> & count = it->second;
+        //double sum_counts = std::accumulate(count.begin(), count.end(), 0.0);
 
         // The following depends on ccdmap keys (split vectors) being sorted such that an
         // entry for an unconditional clade, e.g. (ABC), precedes any conditional clade entries,
@@ -591,316 +437,37 @@ void Galax::estimateInfo(CCDMapType & ccdmap, std::string & summaryinfostr, std:
         if (first)
             {
             first = false;
-
-            // Initialize data for first clade
-            assert(v.size() == 1);  // first entry should be an unconditional clade entry
-            clade = v[0];   // keep track of the current parent clade
-
-            //POL temporary
-            //std::cerr << "first clade: " << clade.createPatternRepresentation() << std::endl;
-
-            // Individual subsets
-            unsigned subset_index = 0;
-            BOOST_FOREACH(double subset_count, count)
-                {
-                clade_Hp[subset_index] = lognrooted(clade.countOnBits());
-                clade_H[subset_index] = 0.0;
-                clade_denom[subset_index] = subset_count;
-                ++subset_index;
-                }
-
-            // Merged case
-            clade_Hp[num_subsets] = lognrooted(clade.countOnBits());
-            clade_H[num_subsets] = 0.0;
-            clade_denom[num_subsets] = sum_counts;
+            clade = (it->first)[0];
+            gd.newClade(it->first, it->second);
             }
         else
             {
             // Not first conditional clade entry in ccdmap
-            if (v[0] == clade)
+            if ((it->first)[0] == clade)
                 {
                 // Conditional clade entry whose parent is clade
-                assert(v.size() == 3); // parent clade, left clade, right clade
-
-                // Individual subsets
-                unsigned subset_index = 0;
-                BOOST_FOREACH(double subset_count, count)
-                    {
-                    if (subset_count > 0)
-                        {
-                        double p = subset_count/clade_denom[subset_index];
-
-                        //POL temporary
-                        //std::cerr << "  subset " << subset_index << ": p = " << p << std::endl;
-
-                        clade_H[subset_index] -= p*log(p);
-                        clade_Hp[subset_index] -= p*(lognrooted((v[1].countOnBits())) + lognrooted(v[2].countOnBits()));
-                        }
-                    ++subset_index;
-                    }
-
-                // Merged case
-                double p = sum_counts/clade_denom[num_subsets];
-                clade_H[num_subsets] -= p*log(p);
-
-                //POL temporary
-                //std::cerr << "  merged: p = " << p << std::endl;
-
-                clade_Hp[num_subsets] -= p*(lognrooted((v[1].countOnBits())) + lognrooted(v[2].countOnBits()));
+                gd.conditionalClade(it->first, it->second);
                 }
             else
                 {
                 // Just found next unconditional clade entry, so now is the time to finish computing
                 // information content for the previous clade
-                assert(v.size() == 1); // v should just only have split for parent clade
+                tmp = gd.finalizeClade(detailedinfostr);
+                gd.newClade(it->first, it->second);
 
-                double sum_Ipct = 0.0;
-                for (unsigned subset_index = 0; subset_index < num_subsets; ++subset_index)
-                    {
-                    // Compute I for previous clade
-                    w[subset_index] = clade_denom[subset_index]/_tree_counts[subset_index]; // marginal posterior clade probability
-
-                    I[subset_index] = w[subset_index]*(clade_Hp[subset_index] - clade_H[subset_index]);
-                    total_I[subset_index] += I[subset_index];
-
-
-                    Ipct[subset_index] = 100.0*I[subset_index]/total_entropy;
-                    sum_Ipct += Ipct[subset_index];
-                    }
-
-                // handle merged case
-                // Compute I for previous clade
-                w[num_subsets] = clade_denom[num_subsets]/total_trees; // marginal posterior clade probability
-
-                I[num_subsets] = w[num_subsets]*(clade_Hp[num_subsets] - clade_H[num_subsets]);
-                total_I[num_subsets] += I[num_subsets];
-
-                Ipct[num_subsets] = 100.0*I[num_subsets]/total_entropy;
-
-                // Compute clade-specific D
-                double D = (sum_Ipct/num_subsets) - Ipct[num_subsets];
-                total_D += D;
-
-                saveDetailedInfoForClade(detailedinfostr, clade.createPatternRepresentation(), num_subsets, total_trees, clade_Hp, clade_H, w, I, Ipct, D);
-
-                // store numbers for this clade in clade_info vector
-                std::vector<double> tmp;
-                tmp.push_back(Ipct[num_subsets]);
-                tmp.push_back(D);
-                tmp.push_back(w[num_subsets]);
-                tmp.push_back(I[num_subsets]);  // added for information profiling
                 clade_info.push_back(GalaxInfo(clade.createPatternRepresentation(), tmp));
-
-                // Initialize data for next clade
-                clade = v[0];
-
-                //POL temporary
-                //std::cerr << "next clade: " << clade.createPatternRepresentation() << std::endl;
-
-                // Individual subsets
-                unsigned subset_index = 0;
-                BOOST_FOREACH(double subset_count, count)
-                    {
-                    clade_Hp[subset_index] = lognrooted(clade.countOnBits());
-                    clade_H[subset_index] = 0.0;
-                    clade_denom[subset_index] = subset_count;
-                    ++subset_index;
-                    }
-
-                // Merged case
-                clade_Hp[num_subsets] = lognrooted(clade.countOnBits());
-                clade_H[num_subsets] = 0.0;
-                clade_denom[num_subsets] = sum_counts;
+                clade = (it->first)[0];
                 }
             }
         }
 
     // Compute I for final clade
-    double sum_Ipct = 0.0;
-    for (unsigned subset_index = 0; subset_index < num_subsets; ++subset_index)
-        {
-        std::pair<unsigned,double> unicov = estimateCoverage(ccdmap, subset_index);
-        unique[subset_index] = unicov.first;
-        coverage[subset_index] = unicov.second;
+    tmp = gd.finalizeClade(detailedinfostr);
+    gd.calcCoverage(ccdmap, _treeCCD);
 
-        if (clade_denom[subset_index] > 0)
-            {
-            w[subset_index] = clade_denom[subset_index]/_tree_counts[subset_index];
-
-            I[subset_index] = w[subset_index]*(clade_Hp[subset_index] - clade_H[subset_index]);
-            total_I[subset_index] += I[subset_index];
-
-            Ipct[subset_index] = 100.0*I[subset_index]/total_entropy;
-            sum_Ipct += Ipct[subset_index];
-            }
-        }
-
-    //std::pair<unsigned,double> unicov = estimateCoverage(ccdmap, num_subsets);
-    //unique[num_subsets] = unicov.first;
-    //coverage[num_subsets] = unicov.second;
-
-    w[num_subsets] = clade_denom[num_subsets]/total_trees;
-
-    I[num_subsets] = w[num_subsets]*(clade_Hp[num_subsets] - clade_H[num_subsets]);
-    total_I[num_subsets] += I[num_subsets];
-
-    Ipct[num_subsets] = 100.0*I[num_subsets]/total_entropy;
-
-    // Compute clade-specific D
-    double D = (sum_Ipct/num_subsets) - Ipct[num_subsets];
-    total_D += D;
-
-    saveDetailedInfoForClade(detailedinfostr, clade.createPatternRepresentation(), num_subsets, total_trees, clade_Hp, clade_H, w, I, Ipct, D);
-
-    std::vector<double> tmp;
-    tmp.push_back(Ipct[num_subsets]);
-    tmp.push_back(D);
-    tmp.push_back(w[num_subsets]);
-    tmp.push_back(I[num_subsets]);  // added for information profiling
     clade_info.push_back(GalaxInfo(clade.createPatternRepresentation(), tmp));
 
-    // Report totals for each subset
-    std::vector<GalaxInfo> subset_info;
-    for (unsigned subset_index = 0; subset_index < num_subsets; ++subset_index)
-        {
-        std::vector<double> tmp;
-        tmp.push_back(total_I[subset_index]);
-        tmp.push_back(unique[subset_index]);
-        tmp.push_back(coverage[subset_index]);
-        subset_info.push_back(GalaxInfo(_treefile_names[subset_index], tmp));
-        }
-    GalaxInfo::_sortby_index = 0;
-    std::sort(subset_info.begin(), subset_info.end(), std::greater<GalaxInfo>());
-
-    const char indiv_summary[]  = "%20s %12.5f %12.5f %12.5f %12.5f %12s\n";
-    const char merged_summary[] = "%20s %12s %12s %12.5f %12.5f %12.5f\n";
-    summaryinfostr += std::string("\nTotals\n");
-    summaryinfostr += boost::str(boost::format("%20s %12s %12s %12s %12s %12s\n")
-        % "treefile"
-        % "unique"
-        % "coverage"
-        % "I"
-        % "Ipct"
-        % "D");
-    unsigned subset_index = 0;
-    BOOST_FOREACH(GalaxInfo & c, subset_info)
-        {
-        double info = c._value[0];
-        double unique = c._value[1];
-        double coverage = c._value[2];
-        double pct = 100.0*info/total_entropy;
-        summaryinfostr += boost::str(boost::format(indiv_summary)
-            % c._name
-            % unique
-            % coverage
-            % info
-            % pct
-            % "---");
-        ++subset_index;
-        }
-
-    // Sort clades for merged case by Ipct, D, and w and save majrule tree
-    double totalIpct = 0.0;
-    double cumpct = 0.0;
-    if (num_subsets > 1)
-        {
-        totalIpct = (100.0*total_I[num_subsets]/total_entropy);
-        summaryinfostr += boost::str(boost::format(merged_summary)
-            % "merged"
-            % "---"
-            % "---"
-            % total_I[num_subsets]
-            % (100.0*total_I[num_subsets]/total_entropy)
-            % total_D);
-
-        // Report merged info for each clade sorted from highest to lowest
-        GalaxInfo::_sortby_index = 0;
-        std::sort(clade_info.begin(), clade_info.end(), std::greater<GalaxInfo>());
-        const char clade_summary[]  = "%12.5f %12.5f %12.5f %12.5f %12.5f %s\n";
-        summaryinfostr += std::string("\nClades sorted by merged info (top 95% shown):\n");
-        summaryinfostr += boost::str(boost::format("%12s %12s %12s %12s %12s %s\n")
-            % "I"
-            % "%"
-            % "cum. %"
-            % "D"
-            % "w"
-            % "clade");
-        cumpct = 0.0;
-        BOOST_FOREACH(GalaxInfo & c, clade_info)
-            {
-            double info = c._value[0];
-            double diff = c._value[1];
-            double w    = c._value[2];
-            double pct  = 100.0*info/totalIpct;
-            cumpct += pct;
-            if (cumpct > 95)
-                break;
-            summaryinfostr += boost::str(boost::format(clade_summary)
-                % info
-                % pct
-                % cumpct
-                % diff
-                % w
-                % c._name);
-            }
-
-        // Report diff for each clade sorted from highest to lowest
-        GalaxInfo::_sortby_index = 1;
-        std::sort(clade_info.begin(), clade_info.end(), std::greater<GalaxInfo>());
-        summaryinfostr += std::string("\nClades sorted by D (top 95% shown):\n");
-        summaryinfostr += boost::str(boost::format("%12s %12s %12s %12s %12s %s\n")
-            % "D"
-            % "%"
-            % "cum. %"
-            % "Ipct"
-            % "w"
-            % "clade");
-        cumpct = 0.0;
-        BOOST_FOREACH(GalaxInfo & c, clade_info)
-            {
-            double info = c._value[0];
-            double diff = c._value[1];
-            double w    = c._value[2];
-            double pct  = 100.0*diff/total_D;
-            cumpct += pct;
-            if (cumpct > 95)
-                break;
-            summaryinfostr += boost::str(boost::format(clade_summary)
-                % diff
-                % pct
-                % cumpct
-                % info
-                % w
-                % c._name);
-            }
-        }   //if (num_subsets > 1)
-
-    // Report clade posterior for each clade sorted from highest to lowest
-    GalaxInfo::_sortby_index = 2;
-    std::sort(clade_info.begin(), clade_info.end(), std::greater<GalaxInfo>());
-    summaryinfostr += std::string("\nClades sorted by merged clade posterior (w) (only those >= 50% shown):\n");
-    summaryinfostr += boost::str(boost::format("%12s %12s %12s %s\n")
-        % "w"
-        % "Ipct"
-        % "D"
-        % "clade");
-    cumpct = 0.0;
-    //double log2 = log(2.0);
-    BOOST_FOREACH(GalaxInfo & c, clade_info)
-        {
-        double info = c._value[0];
-        double diff = c._value[1];
-        double w    = c._value[2];
-
-        if (w >= 0.5)
-            {
-            summaryinfostr += boost::str(boost::format("%12.5f %12.5f %12.5f %s\n")
-                % w
-                % info
-                % diff
-                % c._name);
-            }
-        }
+    gd.reportTotals(summaryinfostr, clade_info);
 
     _end_time = getCurrentTime();
     _total_seconds += secondsElapsed(_start_time, _end_time);
