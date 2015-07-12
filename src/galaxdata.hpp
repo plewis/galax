@@ -34,30 +34,29 @@ class GalaxData
                                     GalaxData(const TreeCountsVector & tree_counts, const NameVector & tree_file_names, unsigned ntaxa);
                                     ~GalaxData() {}
 
-        void                        saveDetailedInfoForClade(std::string & detailedinfostr, double D);
         void                        newClade(const SplitVector & v, CountVector & c);
         void                        conditionalClade(const SplitVector & v, CountVector & c);
         std::vector<double>         finalizeClade(std::string & detailedinfostr);
-        std::pair<unsigned,double>  estimateCoverage(CCDMapType & ccdmap, SubsetTreeSetType & treeCCD, unsigned subset_index);
-        void                        calcCoverage(CCDMapType & ccdmap, SubsetTreeSetType & treeCCD);
+        std::pair<unsigned,double>  estimateCoverageForSubset(CCDMapType & ccdmap, SubsetTreeSetType & treeCCD, unsigned subset_index);
+        void                        estimateCoverage(CCDMapType & ccdmap, SubsetTreeSetType & treeCCD);
+
+        void                        saveDetailedInfoForClade(std::string & detailedinfostr, double D);
         void                        reportTotals(std::string & infostr, std::vector<GalaxInfo> & clade_info);
 
         double                      getTotalEntropy() const {return _total_entropy;}
 
-        const NameVector &          _tree_file_names;
+        // Assigned or caculated once in the constructor
         const TreeCountsVector &    _tree_counts;
+        const NameVector &          _tree_file_names;
+        unsigned                    _num_subsets;
         unsigned                    _total_trees;
         double                      _total_entropy;
-        double                      _total_D;
 
         // Reassigned or recalculated for each new clade
-        double                      _sum_counts;
-        unsigned                    _num_subsets;
         Split                       _clade;
 
         // These vectors store information for one particular clade for each subset plus the merged case
-        // All of these vectors are reinitialized for every new clade: not currently storing all information
-        // for every subset-clade combination
+        // All of these vectors are reinitialized for every new clade
         std::vector<double>         _clade_H;
         std::vector<double>         _clade_Hp;
         std::vector<double>         _clade_denom;
@@ -65,9 +64,9 @@ class GalaxData
         std::vector<double>         _I;
         std::vector<double>         _Ipct;
 
-        // These vectors hold cumulative I across clades, number of unique tree topologies, and coverage for each subset plus the merged case
-        // These are not reset for each clade.
+        // These vectors are cumulative across clades and are not reset for each clade.
         std::vector<double>         _total_I;
+        double                      _total_D;
         std::vector<double>         _unique;
         std::vector<double>         _coverage;
 	};
@@ -78,7 +77,6 @@ GalaxData::GalaxData(const TreeCountsVector & tree_counts, const NameVector & tr
     _total_trees(0),
     _total_entropy(0.0),
     _total_D(0.0),
-    _sum_counts(0.0),
     _num_subsets((unsigned)_tree_counts.size()),
     _clade_H(_num_subsets+1, 0.0),
     _clade_Hp(_num_subsets+1, 0.0),
@@ -103,7 +101,6 @@ GalaxData::GalaxData(const TreeCountsVector & tree_counts, const NameVector & tr
 
 void GalaxData::newClade(const SplitVector & v, std::vector<double> & c)
     {
-    _sum_counts = std::accumulate(c.begin(), c.end(), 0.0);
     assert(v.size() == 1);  // this should be an unconditional clade entry
     _clade = v[0];   // keep track of the current parent clade
 
@@ -118,9 +115,10 @@ void GalaxData::newClade(const SplitVector & v, std::vector<double> & c)
         }
 
     // Merged case
+    double sum_counts = std::accumulate(c.begin(), c.end(), 0.0);
     _clade_Hp[_num_subsets] = lognrooted(_clade.countOnBits());
     _clade_H[_num_subsets] = 0.0;
-    _clade_denom[_num_subsets] = _sum_counts;
+    _clade_denom[_num_subsets] = sum_counts;
     }
 
 void GalaxData::conditionalClade(const SplitVector & v, std::vector<double> & c)
@@ -142,7 +140,8 @@ void GalaxData::conditionalClade(const SplitVector & v, std::vector<double> & c)
         }
 
     // Merged case
-    double p = _sum_counts/_clade_denom[_num_subsets];
+    double sum_counts = std::accumulate(c.begin(), c.end(), 0.0);
+    double p = sum_counts/_clade_denom[_num_subsets];
     _clade_H[_num_subsets] -= p*log(p);
 
     _clade_Hp[_num_subsets] -= p*(lognrooted((v[1].countOnBits())) + lognrooted(v[2].countOnBits()));
@@ -242,7 +241,7 @@ std::vector<double> GalaxData::finalizeClade(std::string & detailedinfostr)
     return tmp;
     }
 
-std::pair<unsigned,double> GalaxData::estimateCoverage(CCDMapType & ccdmap, SubsetTreeSetType & treeCCD, unsigned subset_index)
+std::pair<unsigned,double> GalaxData::estimateCoverageForSubset(CCDMapType & ccdmap, SubsetTreeSetType & treeCCD, unsigned subset_index)
     {
     double max_log_product = 0.0;
     std::vector< double > log_products;
@@ -287,15 +286,24 @@ std::pair<unsigned,double> GalaxData::estimateCoverage(CCDMapType & ccdmap, Subs
     return std::pair<unsigned,double>(num_unique_trees, exp_log_coverage);
     }
     
-void GalaxData::calcCoverage(CCDMapType & ccdmap, SubsetTreeSetType & treeCCD)
+void GalaxData::estimateCoverage(CCDMapType & ccdmap, SubsetTreeSetType & treeCCD)
     {
-    // Estimate coverage and determine number of unique tree topologies for each subset
+    std::pair<unsigned,double> unicov;
+
+    // Individual subsets
     for (unsigned subset_index = 0; subset_index < _num_subsets; ++subset_index)
         {
-        std::pair<unsigned,double> unicov = estimateCoverage(ccdmap, treeCCD, subset_index);
+        unicov = estimateCoverageForSubset(ccdmap, treeCCD, subset_index);
         _unique[subset_index] = unicov.first;
         _coverage[subset_index] = unicov.second;
         }
+
+    // Merged case
+#if 0
+    unicov = estimateCoverageForSubset(ccdmap, treeCCD, _num_subsets);
+    _unique[_num_subsets] = unicov.first;
+    _coverage[_num_subsets] = unicov.second;
+#endif
     }
 
 void GalaxData::reportTotals(std::string & infostr, std::vector<GalaxInfo> & clade_info)

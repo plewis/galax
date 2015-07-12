@@ -463,7 +463,7 @@ void Galax::estimateInfo(CCDMapType & ccdmap, std::string & summaryinfostr, std:
 
     // Compute I for final clade
     tmp = gd.finalizeClade(detailedinfostr);
-    gd.calcCoverage(ccdmap, _treeCCD);
+    gd.estimateCoverage(ccdmap, _treeCCD);
 
     clade_info.push_back(GalaxInfo(clade.createPatternRepresentation(), tmp));
 
