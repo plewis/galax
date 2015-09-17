@@ -9,6 +9,7 @@
 #include <fstream>
 #include <limits>
 #include <algorithm>
+#include <sstream>
 #include <boost/format.hpp>
 #include <boost/lambda/lambda.hpp>
 #include "galax.hpp"
@@ -121,7 +122,14 @@ bool Galax::replaceTaxonNames(const std::string & newick_with_taxon_names, std::
         unsigned n = taxonNumberFromName(what[1].str());
         if (n > 0)
             {
-            newick_with_taxon_numbers.append(std::to_string(n));
+#           if 0
+                // to_string not available on some systems
+                newick_with_taxon_numbers.append(std::to_string(n));
+#           else
+                std::ostringstream oss;
+                oss << n;
+                newick_with_taxon_numbers.append(oss.str());
+#           endif
             }
         else
             {
@@ -602,7 +610,8 @@ void Galax::run(std::string treefname, std::string listfname, unsigned skip, boo
     assert (_ALLSUBSETS == (unsigned)(-1));
 	try
 		{
-        _outf.open(_outfprefix + ".txt");
+        std::string outfname = std::string(_outfprefix + ".txt");
+        _outf.open(outfname.c_str());
         _outgroup = outgroup_taxon;
         _rooted = rooted;
         if (!_rooted && _outgroup == 0)
@@ -692,7 +701,8 @@ void Galax::run(std::string treefname, std::string listfname, unsigned skip, boo
 
         if (details)
             {
-            _detailsf.open(_outfprefix + "-details.txt");
+            std::string detailsfname = std::string(_outfprefix + "-details.txt");
+            _detailsf.open(detailsfname.c_str());
             _detailsf << "\n" << detailedinfostr;
             _detailsf.close();
             }
