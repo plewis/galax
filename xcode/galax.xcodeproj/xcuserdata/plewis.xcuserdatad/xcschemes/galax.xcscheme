@@ -44,7 +44,7 @@
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       launchStyle = "0"
       useCustomWorkingDirectory = "YES"
-      customWorkingDirectory = "/Users/plewis/Documents/manuscripts/to-be-written/bayesinfo/manuscript/secondtry/supplementary-saved/figure3-rokas/datasets"
+      customWorkingDirectory = "/Users/plewis/Documents/software/galax/test/multiple-treefiles"
       buildConfiguration = "Debug"
       ignoresPersistentStateOnLaunch = "NO"
       debugDocumentVersioning = "YES"
@@ -65,7 +65,7 @@
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "galax.txt"
+            argument = "genelist.txt"
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
@@ -74,14 +74,6 @@
          </CommandLineArgument>
          <CommandLineArgument
             argument = "1"
-            isEnabled = "YES">
-         </CommandLineArgument>
-         <CommandLineArgument
-            argument = "--outfile"
-            isEnabled = "YES">
-         </CommandLineArgument>
-         <CommandLineArgument
-            argument = "new-full"
             isEnabled = "YES">
          </CommandLineArgument>
       </CommandLineArguments>

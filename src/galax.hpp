@@ -26,7 +26,7 @@ class Galax
                                             Galax(const std::string outfile_prefix);
                                             ~Galax();
 
-        void                                run(std::string treefname, std::string listfname, unsigned skip, bool trees_rooted, unsigned outgroup_taxon);
+        void                                run(std::string treefname, std::string listfname, unsigned skip, bool trees_rooted, bool save_details, unsigned outgroup_taxon);
 
     private:
 

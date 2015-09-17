@@ -29,6 +29,7 @@ std::string output_file_name = "output-galax";
 unsigned skipped_newicks = 0;
 unsigned outgroup_taxon = 1;
 bool trees_rooted = false;
+bool save_details = false;
 
 void processCommandLineOptions(int argc, const char * argv[])
     {
@@ -40,7 +41,7 @@ void processCommandLineOptions(int argc, const char * argv[])
         ("help,h", "produce help message")
         ("version,v", "show program version")
         ("rooted,r", boost::program_options::bool_switch()->default_value(false), "expect trees to be rooted (leave out this option to assume unrooted)")
-        ("details,d", boost::program_options::bool_switch()->default_value(false), "save information content details for each tree file")
+        ("details,d", boost::program_options::bool_switch()->default_value(false), "save information content details for each clade (can generate a lot of output)")
         ("skip,s", boost::program_options::value<unsigned>(), "number of tree descriptions to skip at beginning of tree file")
         ("treefile,t", boost::program_options::value<std::string>(), "name of tree file in NEXUS format (used to generate a majority-rule consensus tree)")
         ("listfile,l", boost::program_options::value<std::string>(), "name of file listing whitespace-separated, NEXUS-formatted tree file names to be processed")
@@ -87,6 +88,12 @@ void processCommandLineOptions(int argc, const char * argv[])
         {
         std::cout << boost::str(boost::format("This is %s version %d.%d.%d") % program_name % major_version % minor_version % bugfix_version) << std::endl;
         std::exit(1);
+        }
+
+    // If user used --details on command line, set save_details to supplied value
+    if (vm.count("details"))
+        {
+        save_details = vm["details"].as<bool>();
         }
 
     // If user used --rooted on command line, expect trees in specified tree file to be rooted
@@ -158,6 +165,13 @@ void processCommandLineOptions(int argc, const char * argv[])
 
     std::cout << "Output will be stored in file " << output_file_name << std::endl;
 
+    if (save_details)
+        std::cout << "Detailed information about all clades will be saved" << std::endl;
+    else
+        {
+        std::cout << "Only summary information will be saved" << std::endl;
+        }
+
     if (trees_rooted)
         std::cout << "Trees assumed to be rooted" << std::endl;
     else
@@ -179,7 +193,7 @@ int main(int argc, const char * argv[])
     try
         {
         processCommandLineOptions(argc, argv);
-        Galax(output_file_name).run(tree_file_name, list_file_name, skipped_newicks, trees_rooted, outgroup_taxon);
+        Galax(output_file_name).run(tree_file_name, list_file_name, skipped_newicks, trees_rooted, save_details, outgroup_taxon);
         }
     catch (boost::program_options::unknown_option & x)
         {

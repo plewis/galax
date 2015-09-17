@@ -24,18 +24,10 @@ const unsigned Galax::_ALLSUBSETS = std::numeric_limits<unsigned>::max();
 Galax::Galax(const std::string outfile_prefix)
     {
     _outfprefix = outfile_prefix;
-
-    std::string outfname = outfile_prefix + ".txt";
-    _outf.open(outfname.c_str());
-
-    std::string detailsfname = outfile_prefix + "-details.txt";
-    _detailsf.open(detailsfname.c_str());
     }
 
 Galax::~Galax()
     {
-    _outf.close();
-    _detailsf.close();
     }
 
 void Galax::getTrees(std::string file_contents, unsigned skip)
@@ -605,11 +597,12 @@ void Galax::initTreeCCD(unsigned num_subsets)
         }
     }
 
-void Galax::run(std::string treefname, std::string listfname, unsigned skip, bool rooted, unsigned outgroup_taxon)
+void Galax::run(std::string treefname, std::string listfname, unsigned skip, bool rooted, bool details, unsigned outgroup_taxon)
     {
     assert (_ALLSUBSETS == (unsigned)(-1));
 	try
 		{
+        _outf.open(_outfprefix + ".txt");
         _outgroup = outgroup_taxon;
         _rooted = rooted;
         if (!_rooted && _outgroup == 0)
@@ -633,54 +626,7 @@ void Galax::run(std::string treefname, std::string listfname, unsigned skip, boo
         std::string summaryinfostr;
         std::string detailedinfostr;
         TreeManip<Node>::TreeManipShPtr tm(new TreeManip<Node>());
-#if 0
-        if (is_treefile && is_listfile)
-            {
-            //
-            // Both --listfile and --treefile provided on command line
-            //
-            std::cout << "Read " << _treefile_names.size() << " tree file names from list file " << listfname << "\n";
-            std::cout << "Read 1 tree file name from tree file " << treefname << "\n";
 
-            // process --treefile and construct majrule consensus tree
-            getFileContents(file_contents, treefname);
-            getTrees(file_contents, skip);
-            initTreeCCD(1);
-            processTrees(tm, _ccdtree, 0, 1);
-            std::vector<GalaxInfo> majrule_clade_info;
-            std::vector<Split> majrule_splits;
-            std::string majrule_tree;
-            estimateInfo(_ccdtree, summaryinfostr, detailedinfostr, majrule_clade_info);
-            buildMajorityRuleTree(majrule_clade_info, majrule_clade_info, majrule_tree);
-            writeMajruleTreefile("majrule", majrule_tree);
-
-            // process --listfile and construct majrule consensus tree for merged trees
-            // note: infostr is overwritten
-            _tree_counts.clear();
-            unsigned subset_index = 0;
-            unsigned num_subsets = (unsigned)_treefile_names.size();
-            initTreeCCD(num_subsets);
-            BOOST_FOREACH(std::string & tree_file_name, _treefile_names)
-                {
-                file_contents.clear();
-                getFileContents(file_contents, tree_file_name);
-                getTrees(file_contents, skip);
-                processTrees(tm, _ccdlist, subset_index++, num_subsets);
-                }
-            std::vector<GalaxInfo> merged_clade_info;
-            std::vector<Split> merged_splits;
-            std::string merged_tree;
-            estimateInfo(_ccdlist, summaryinfostr, detailedinfostr, merged_clade_info);
-            buildMajorityRuleTree(merged_clade_info, merged_clade_info, merged_tree);
-            writeMajruleTreefile("merged", merged_tree);
-
-            // finally, add information content from --listfile tree files onto majority rule tree derived from --treefile
-            std::string majrule_merged_tree;
-            buildMajorityRuleTree(majrule_clade_info, merged_clade_info, majrule_merged_tree);
-            writeMajruleTreefile("majrule-merged", majrule_merged_tree);
-            }
-        else
-#endif
         if (is_treefile)
             {
             //
@@ -742,7 +688,14 @@ void Galax::run(std::string treefname, std::string listfname, unsigned skip, boo
             }
 
         _outf << "\n" << summaryinfostr;
-        _detailsf << "\n" << detailedinfostr;
+        _outf.close();
+
+        if (details)
+            {
+            _detailsf.open(_outfprefix + "-details.txt");
+            _detailsf << "\n" << detailedinfostr;
+            _detailsf.close();
+            }
 
         std::cout << "\nRequired " << _total_seconds << " total seconds" << std::endl;
         }
