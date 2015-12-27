@@ -21,7 +21,7 @@ using namespace galax;
 unsigned GalaxInfo::_sortby_index = 0;
 std::string program_name = "galax";
 unsigned major_version = 1;
-unsigned minor_version = 3;
+unsigned minor_version = 0;
 unsigned bugfix_version = 0;
 std::string tree_file_name = "";
 std::string list_file_name = "";
@@ -49,6 +49,7 @@ void processCommandLineOptions(int argc, const char * argv[])
         ("outgroup,g", boost::program_options::value<unsigned>(), "number of taxon to use as the outgroup (where first taxon listed in treefile translate statement is 1)")
         ;
     boost::program_options::store(boost::program_options::parse_command_line(argc, argv, desc), vm);
+#if 0
     try
         {
         const boost::program_options::parsed_options & parsed = boost::program_options::parse_config_file< char >("galax.conf", desc, true);  // 3rd. argument = allow unrecognized options
@@ -59,6 +60,7 @@ void processCommandLineOptions(int argc, const char * argv[])
         {
         std::cout << "Note: configuration file (galax.conf) not found" << std::endl;
         }
+#endif
     boost::program_options::notify(vm);
 
     if (to_pass_further.size() > 1)
@@ -193,7 +195,7 @@ int main(int argc, const char * argv[])
     try
         {
         processCommandLineOptions(argc, argv);
-        Galax(output_file_name).run(tree_file_name, list_file_name, skipped_newicks, trees_rooted, save_details, outgroup_taxon);
+        Galax(output_file_name, boost::str(boost::format("%d.%d.%d") % major_version % minor_version % bugfix_version)).run(tree_file_name, list_file_name, skipped_newicks, trees_rooted, save_details, outgroup_taxon);
         }
     catch (boost::program_options::unknown_option & x)
         {

@@ -85,9 +85,9 @@ typename MapType::iterator efficientAddOrCheck(MapType & m, const KeyArgType & k
         }
     }
 
-// This function provides an efficient, general way to increment the value m[k] where map values are unsigned integers.
+// This function provides an efficient, general way to increment the value m[k] where map values are num_subsets-length vectors of doubles.
 template< typename MapType, typename KeyArgType >
-typename MapType::iterator efficientIncrement(MapType & m, const KeyArgType & k, unsigned subset_index, unsigned num_subsets)
+typename MapType::iterator efficientIncrementSubset(MapType & m, const KeyArgType & k, unsigned subset_index, unsigned num_subsets)
     {
     // Modified version of item 24, p. 110, in Meyers, Scott. 2001. Effective STL: 50 specific ways to improve
     // your use of the Standard Template Library. Addison-Wesley, Boston.
@@ -109,6 +109,31 @@ typename MapType::iterator efficientIncrement(MapType & m, const KeyArgType & k,
         std::vector<double> v(num_subsets, 0.0);
         v[subset_index] = 1.0;
         return m.insert(lb, MVT(k, v));
+        }
+    }
+
+// This function provides an efficient, general way to increment the value m[k] where map values are unsigned integers.
+template< typename MapType, typename KeyArgType >
+typename MapType::iterator efficientAddTo(MapType & m, const KeyArgType & k, unsigned amount_to_add)
+    {
+    // Modified version of item 24, p. 110, in Meyers, Scott. 2001. Effective STL: 50 specific ways to improve
+    // your use of the Standard Template Library. Addison-Wesley, Boston.
+
+    // Find where k is, or should be
+    typename MapType::iterator lb = m.lower_bound(k);
+
+    // If lb points to a pair whose key is equivalent to k,
+    if (lb != m.end() && !(m.key_comp()(k, lb->first)))
+        {
+        // update the pair's value and return an iterator to that pair,
+        lb->second += amount_to_add;
+        return lb;
+        }
+    else
+        {
+        // else add pair(k,v) to m and return an iterator to the new map element.
+        typedef typename MapType::value_type MVT;
+        return m.insert(lb, MVT(k, amount_to_add));
         }
     }
 

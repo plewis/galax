@@ -23,7 +23,7 @@ class Galax
     {
     public:
 
-                                            Galax(const std::string outfile_prefix);
+                                            Galax(const std::string outfile_prefix, const std::string version);
                                             ~Galax();
 
         void                                run(std::string treefname, std::string listfname, unsigned skip, bool trees_rooted, bool save_details, unsigned outgroup_taxon);
@@ -62,6 +62,8 @@ class Galax
         double                              _total_seconds;
         bool                                _rooted;
         std::string                         _outfprefix;
+        std::string                         _version;
+        bool                                _show_details;
 
         std::ofstream                       _treef;     // file for storing majority rule consensus tree
         std::ofstream                       _outf;      // file used for output summary
@@ -72,7 +74,8 @@ class Galax
         CCDMapType                          _ccdlist;   // _ccdlist[i][j] stores conditional clade info for clade i, subset j, for trees specified by --listfile
         CCDMapType                          _ccdtree;   // _ccdtree[i][0] stores conditional clade info for clade i for trees specified by --treefile
 
-        SubsetTreeSetType                   _treeCCD;  // _treeCCD[i] holds "tree ID" (list of cond. clades) for each tree in subset i
+        SubsetTreeSetType                   _treeCCD;  // _treeCCD[i] is a set of tree IDs (list of cond. clades) appearing in the sample for subset i
+        SubsetTreeMapType                   _treeMap;  // _treeMap[i] is a map relating tree IDs (keys) to counts (values) of each tree topology sampled in subset i (only used if _show_details is true)
     };
 
 }

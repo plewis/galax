@@ -22,9 +22,10 @@ using namespace galax;
 
 const unsigned Galax::_ALLSUBSETS = std::numeric_limits<unsigned>::max();
 
-Galax::Galax(const std::string outfile_prefix)
+Galax::Galax(const std::string outfile_prefix, const std::string version)
     {
     _outfprefix = outfile_prefix;
+    _version = version;
     }
 
 Galax::~Galax()
@@ -260,7 +261,7 @@ void Galax::processTrees(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap
         try
             {
             tm->buildFromNewick(*sit, (_rooted ? 0 : _outgroup));
-            tm->addToCCDMap(ccdmap, _treeCCD, subset_index, num_subsets);
+            tm->addToCCDMap(ccdmap, _treeCCD, _treeMap, _show_details, subset_index, num_subsets);
             }
         catch(XGalax & x)
             {
@@ -399,6 +400,10 @@ void Galax::estimateInfo(CCDMapType & ccdmap, std::string & summaryinfostr, std:
     // Create a GalaxData object to so most of the work
     unsigned ntaxa = (unsigned)_translate.size();
     GalaxData gd(_tree_counts, _treefile_names, (_rooted ? ntaxa : ntaxa - 1));
+    if (_show_details)
+        gd.setShowDetails(true);
+    else
+        gd.setShowDetails(false);
 
     //unsigned total_trees = std::accumulate(_tree_counts.begin(), _tree_counts.end(), 0);
 
@@ -414,6 +419,14 @@ void Galax::estimateInfo(CCDMapType & ccdmap, std::string & summaryinfostr, std:
     detailedinfostr += "\nLindley Information\n";
     detailedinfostr += boost::str(boost::format("  Number of taxa in ingroup: %d\n") % ntaxa);
     detailedinfostr += boost::str(boost::format("  Total prior entropy: %.5f\n") % gd.getTotalEntropy());
+    detailedinfostr += "\nKey to columns:\n\n";
+    detailedinfostr += "  treefile = file containing sampled trees from one data subset\n";
+    detailedinfostr += "  trees    = number of trees sampled\n";
+    detailedinfostr += "  K        = Kullback-Leibler divergence for current clade\n";
+    detailedinfostr += "  p*       = marginal posterior probability of current clade\n";
+    detailedinfostr += "  I        = information for current clade (p_C*KL_c)\n";
+    detailedinfostr += "  Ipct     = information for current clade as percent of maximum information\n";
+    detailedinfostr += "  D        = component of dissonance specific to current clade\n\n";
 
     for (CCDMapType::iterator it = ccdmap.begin(); it != ccdmap.end(); ++it)
         {
@@ -463,10 +476,9 @@ void Galax::estimateInfo(CCDMapType & ccdmap, std::string & summaryinfostr, std:
 
     // Compute I for final clade
     tmp = gd.finalizeClade(detailedinfostr);
-    gd.estimateCoverage(ccdmap, _treeCCD);
-
     clade_info.push_back(GalaxInfo(clade.createPatternRepresentation(), tmp));
 
+    gd.estimateCoverage(ccdmap, _treeCCD, _treeMap, detailedinfostr);
     gd.reportTotals(summaryinfostr, clade_info);
 
     _end_time = getCurrentTime();
@@ -598,10 +610,13 @@ void Galax::initTreeCCD(unsigned num_subsets)
     {
     // initialize _treeCCD, which will hold tree IDs for all unique tree topologies in each subset
     _treeCCD.clear();
+    _treeMap.clear();
     for (unsigned i = 0; i <= num_subsets; ++i)
         {
         TreeIDSetType v;
         _treeCCD.push_back(v);
+        TreeMapType m;
+        _treeMap.push_back(m);
         }
     }
 
@@ -612,6 +627,20 @@ void Galax::run(std::string treefname, std::string listfname, unsigned skip, boo
 		{
         std::string outfname = std::string(_outfprefix + ".txt");
         _outf.open(outfname.c_str());
+
+        // Start by reporting settings used
+        _outf << "Galax " << _version << "\n\n";
+        _outf << "Options specified:\n";
+        _outf << "  --treefile: " << treefname << "\n";
+        _outf << "  --listfile: " << listfname << "\n";
+        _outf << "      --skip: " << skip << "\n";
+        _outf << "    --rooted: " << (rooted ? "true" : "false") << "\n";
+        _outf << "   --details: " << (details ? "true" : "false") << "\n";
+        _outf << "  --outgroup: " << outgroup_taxon << "\n";
+        _outf << "   --outfile: " << _outfprefix << "\n";
+        _outf << std::endl;
+
+        _show_details = details;
         _outgroup = outgroup_taxon;
         _rooted = rooted;
         if (!_rooted && _outgroup == 0)
@@ -647,7 +676,9 @@ void Galax::run(std::string treefname, std::string listfname, unsigned skip, boo
             _ccdtree.clear();
             processTrees(tm, _ccdtree, 0, 1);
 
-            std::cout << boost::str(boost::format("Read %d trees from tree file %s\n") % _newicks.size() % treefname);
+            std::string msg = boost::str(boost::format("Read %d trees from tree file %s\n") % _newicks.size() % treefname);
+            std::cout << msg;
+            _outf << msg;
 
             std::vector<GalaxInfo> majrule_clade_info;
             std::vector<Split> majrule_splits;
@@ -666,7 +697,7 @@ void Galax::run(std::string treefname, std::string listfname, unsigned skip, boo
             //
             // --listfile provided on command line
             //
-            std::cout << boost::str(boost::format("Read %d trees from list file %s\n") % _treefile_names.size() % listfname);
+            std::cout << boost::str(boost::format("Reading tree file names from list file %s\n") % listfname);
 
             unsigned subset_index = 0;
             unsigned num_subsets = (unsigned)_treefile_names.size();
@@ -678,7 +709,9 @@ void Galax::run(std::string treefname, std::string listfname, unsigned skip, boo
                 getFileContents(file_contents, tree_file_name);
                 getTrees(file_contents, skip);
                 processTrees(tm, _ccdlist, subset_index++, (unsigned)_treefile_names.size());
-                std::cout << boost::str(boost::format("Read %d trees from tree file %s\n") % _newicks.size() % tree_file_name);
+                std::string msg = boost::str(boost::format("Read %d trees from tree file %s\n") % _newicks.size() % tree_file_name);
+                std::cout << msg;
+                _outf << msg;
                 }
             std::vector<GalaxInfo> merged_clade_info;
             std::vector<Split> merged_splits;

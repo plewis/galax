@@ -17,6 +17,7 @@
 #include <boost/foreach.hpp>
 #include <boost/range/iterator_range_core.hpp>
 #include <set>
+#include <map>
 #include <numeric>      // accumulate
 #include <stdlib.h>     // atoi
 #include "split.hpp"
@@ -38,7 +39,10 @@ typedef std::map< std::string, double >           CladeInfoMap;
 
 typedef std::vector< SplitVector >                TreeIDType;
 typedef std::set< TreeIDType >                    TreeIDSetType;
-typedef std::vector< TreeIDSetType >              SubsetTreeSetType;
+typedef std::vector< TreeIDSetType >              SubsetTreeSetType;    // used to store vector of sets of tree IDs, one vector for each subset
+
+typedef std::map< TreeIDType, unsigned >          TreeMapType;
+typedef std::vector< TreeMapType >                SubsetTreeMapType;    // used to store vector of maps relating tree IDs to counts of sampled trees
 
 template <class T>
 class TreeManip
@@ -58,7 +62,7 @@ class TreeManip
         void                                            buildStarTree(unsigned nleaves, unsigned root_at);
 		std::string                                     makeNewick(unsigned ndecimals, bool edge_support) const;
 
-        void                                            addToCCDMap(CCDMapType & ccdmap, SubsetTreeSetType & treeCCD, unsigned subset_index, unsigned num_subsets);
+        void                                            addToCCDMap(CCDMapType & ccdmap, SubsetTreeSetType & treeCCD, SubsetTreeMapType & treeMap, bool update_treemap, unsigned subset_index, unsigned num_subsets);
         void                                            addToProfile(TimeVector & profile_times, WeightVector & profile_weights, const CladeInfoMap & clade_map);
 
         std::string                                     debugDescribeNode(T * node) const;
@@ -498,7 +502,7 @@ inline void TreeManip<T>::addToProfile(TimeVector & profile_times, WeightVector 
     }
 
 template <class T>
-inline void TreeManip<T>::addToCCDMap(CCDMapType & ccdmap, SubsetTreeSetType & treeCCD, unsigned subset_index, unsigned num_subsets)
+inline void TreeManip<T>::addToCCDMap(CCDMapType & ccdmap, SubsetTreeSetType & treeCCD, SubsetTreeMapType & treeMap, bool update_treemap, unsigned subset_index, unsigned num_subsets)
 	{
     // will hold conditional clade definitions (each of which is a SplitVector) for this tree
     TreeIDType tree_vector;
@@ -518,7 +522,7 @@ inline void TreeManip<T>::addToCCDMap(CCDMapType & ccdmap, SubsetTreeSetType & t
             v.push_back(nd->_split);
 
             // increment the unconditional clade count
-            efficientIncrement(ccdmap, v, subset_index, num_subsets);
+            efficientIncrementSubset(ccdmap, v, subset_index, num_subsets);
 
             if (a->_split < b->_split)
                 {
@@ -532,9 +536,9 @@ inline void TreeManip<T>::addToCCDMap(CCDMapType & ccdmap, SubsetTreeSetType & t
                 }
 
             // increment the conditional clade count
-            efficientIncrement(ccdmap, v, subset_index, num_subsets);
+            efficientIncrementSubset(ccdmap, v, subset_index, num_subsets);
 
-            // add iter to treeCCD for the current tree
+            // add SplitVector v to tree_vector if not a trivial split
             if (nd->_split.countOnBits() > 2)
                 tree_vector.push_back(v);
 
@@ -547,6 +551,11 @@ inline void TreeManip<T>::addToCCDMap(CCDMapType & ccdmap, SubsetTreeSetType & t
     // so that later we can estimate the posterior for this tree topology using the CCD
     std::sort(tree_vector.begin(), tree_vector.end());
     treeCCD[subset_index].insert(tree_vector);
+
+    // Now update treeMap[subset_index], which is a map in which keys are tree IDs and values are counts.
+    // This makes it possible to compute naive entropy estimates
+    if (update_treemap)
+        efficientAddTo(treeMap[subset_index], tree_vector, 1);
     }
 
 #define QUICK_AND_DIRTY_NODE_NUMBERS
