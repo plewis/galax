@@ -540,8 +540,8 @@ void GalaxData::reportTotals(std::string & infostr, std::vector<GalaxInfo> & cla
         tmp.push_back(_coverage[subset_index]);
         subset_info.push_back(GalaxInfo(_tree_file_names[subset_index], tmp));
         }
-    GalaxInfo::_sortby_index = 8;   // 8 is the length of the column header "treefile"
-    std::sort(subset_info.begin(), subset_info.end(), std::greater<GalaxInfo>());
+    //GalaxInfo::_sortby_index = 8;  // 0=Ipct, 1=unique, 2=coverage //wtf? 8 is the length of the column header "treefile"
+    //std::sort(subset_info.begin(), subset_info.end(), std::greater<GalaxInfo>());
 
     unsigned max_length_treefile_name = 0;
     BOOST_FOREACH(GalaxInfo & c, subset_info)
@@ -645,7 +645,11 @@ void GalaxData::reportTotals(std::string & infostr, std::vector<GalaxInfo> & cla
         totalIpct = (100.0*Imerged/_total_entropy);
         double merged_entropy = prior_entropy - Imerged;
         double D = merged_entropy - average_posterior_entropy;
-        double Dpct = 100.0*D/merged_entropy;
+        double Dpct = 0.0;
+        if (merged_entropy > 0.0)
+            {
+            Dpct = 100.0*D/merged_entropy;
+            }
         infostr += boost::str(boost::format(merged_summary)
             % "merged"
             % int(unique)
@@ -661,14 +665,14 @@ void GalaxData::reportTotals(std::string & infostr, std::vector<GalaxInfo> & cla
         //infostr += boost::str(boost::format("\n_total_D = %.8f\n") % _total_D);
 
         // Report merged info for each clade sorted from highest to lowest
-        GalaxInfo::_sortby_index = 0;
+        GalaxInfo::_sortby_index = 0; // 0=Ipct, 1=D, 2=w, 3=I
         std::sort(clade_info.begin(), clade_info.end(), std::greater<GalaxInfo>());
         const char clade_summary[]  = "%12.5f %12.5f %12.5f %12.5f %12.5f %s\n";
         infostr += std::string("\nClades sorted by merged info (top 95% shown):\n");
         infostr += boost::str(boost::format("%12s %12s %12s %12s %12s %s\n")
             % "I"
-            % "%"
-            % "cum. %"
+            % "Ipct"
+            % "cum. Ipct"
             % "D"
             % "w"
             % "clade");
@@ -692,13 +696,13 @@ void GalaxData::reportTotals(std::string & infostr, std::vector<GalaxInfo> & cla
             }
 
         // Report diff for each clade sorted from highest to lowest
-        GalaxInfo::_sortby_index = 1;
+        GalaxInfo::_sortby_index = 1; // 0=Ipct, 1=D, 2=w, 3=I
         std::sort(clade_info.begin(), clade_info.end(), std::greater<GalaxInfo>());
         infostr += std::string("\nClades sorted by D (top 95% shown):\n");
         infostr += boost::str(boost::format("%12s %12s %12s %12s %12s %s\n")
             % "D"
-            % "%"
-            % "cum. %"
+            % "Dpct"
+            % "cum. Dpct"
             % "Ipct"
             % "w"
             % "clade");
@@ -708,7 +712,9 @@ void GalaxData::reportTotals(std::string & infostr, std::vector<GalaxInfo> & cla
             double info = c._value[0];
             double diff = c._value[1];
             double w    = c._value[2];
-            double pct  = 100.0*diff/_total_D;
+            double pct  = 0.0;
+            if (_total_D > 0.0)
+                pct = 100.0*diff/_total_D;
             cumpct += pct;
             if (cumpct > 95)
                 break;
@@ -723,7 +729,7 @@ void GalaxData::reportTotals(std::string & infostr, std::vector<GalaxInfo> & cla
         }   //if (num_subsets > 1)
 
     // Report clade posterior for each clade sorted from highest to lowest
-    GalaxInfo::_sortby_index = 2;
+    GalaxInfo::_sortby_index = 2;   // 0=Ipct, 1=D, 2=w, 3=I
     std::sort(clade_info.begin(), clade_info.end(), std::greater<GalaxInfo>());
     infostr += std::string("\nClades sorted by merged clade posterior (w) (only those >= 50% shown):\n");
     infostr += boost::str(boost::format("%12s %12s %12s %s\n")
@@ -750,7 +756,6 @@ void GalaxData::reportTotals(std::string & infostr, std::vector<GalaxInfo> & cla
         }
 
     }
-
 }
 
 #endif

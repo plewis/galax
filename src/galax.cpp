@@ -495,7 +495,7 @@ void Galax::buildMajorityRuleTree(std::vector<GalaxInfo> & majrule_info, std::ve
     bool same_info = (&majrule_info == &annotate_info);
 
     // Ensure that both majrule_info and annotate_info are sorted so that the clades with highest posterior are first
-    GalaxInfo::_sortby_index = 2;
+    GalaxInfo::_sortby_index = 2;   // 0=Ipct, 1=D, 2=w, 3=I
     std::sort(majrule_info.begin(), majrule_info.end(), std::greater<GalaxInfo>());
     if (!same_info)
         std::sort(annotate_info.begin(), annotate_info.end(), std::greater<GalaxInfo>());
