@@ -391,7 +391,7 @@ std::pair<unsigned,double> GalaxData::estimateCoverageForSubset(CCDMapType & ccd
         {
         double naive_entropy = calcNaiveEntropyForSubset(treeMap, subset_index);
         details += boost::str(boost::format("\nFrom tree file %s: unique = %d  naive entropy = %.5f coverage = %.5f\n") % _tree_file_names[subset_index] % num_unique_trees % naive_entropy % exp_log_coverage);
-        }
+        } 
 
     return std::pair<unsigned,double>(num_unique_trees, exp_log_coverage);
     }
@@ -527,6 +527,17 @@ void GalaxData::estimateCoverage(CCDMapType & ccdmap, SubsetTreeSetType & treeCC
     _unique[_num_subsets] = unicov.first;
     _coverage[_num_subsets] = unicov.second;
     }
+
+std::ostream & operator<<(std::ostream & os, const GalaxInfo & info)
+  {
+  os << "\n\n";
+  BOOST_FOREACH(double d, info._value)
+    {
+    os << "  " << d;
+    }
+  os << std::endl;
+  return os;
+  }
 
 void GalaxData::reportTotals(std::string & infostr, std::vector<GalaxInfo> & clade_info)
     {
