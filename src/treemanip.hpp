@@ -955,6 +955,7 @@ inline void TreeManip<T>::buildFromSplitVector(const std::vector<Split> & split_
                 continue;
 
             // Create a new node to hold the taxa in the current split
+            //std::cerr << boost::str(boost::format("curr_node_index = %d, _tree->_nodes.size() = %d") % curr_node_index % _tree->_nodes.size()) << std::endl;
             assert(curr_node_index + 1 < _tree->_nodes.size());
             T * anc = &_tree->_nodes[++curr_node_index];
             assert(anc);

@@ -399,7 +399,7 @@ void Galax::estimateInfo(CCDMapType & ccdmap, std::string & summaryinfostr, std:
 
     // Create a GalaxData object to so most of the work
     unsigned ntaxa = (unsigned)_translate.size();
-    GalaxData gd(_tree_counts, _treefile_names, (_rooted ? ntaxa : ntaxa - 1));
+    GalaxData gd(_tree_counts, _treefile_names, (_rooted ? ntaxa : ntaxa - 1), _outgroup);
     if (_show_details)
         gd.setShowDetails(true);
     else

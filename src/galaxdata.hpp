@@ -34,7 +34,7 @@ typedef std::vector< TreeIDSetType >            SubsetTreeSetType;
 class GalaxData
 	{
 	public:
-                                    GalaxData(const TreeCountsVector & tree_counts, const NameVector & tree_file_names, unsigned rooted_num_taxa);
+                                    GalaxData(const TreeCountsVector & tree_counts, const NameVector & tree_file_names, unsigned rooted_num_taxa, unsigned outgroup);
                                     ~GalaxData() {}
 
         void                        newClade(const SplitVector & v, CountVector & c);
@@ -59,6 +59,7 @@ class GalaxData
         unsigned                    _num_subsets;
         unsigned                    _total_trees;
         double                      _total_entropy;
+        unsigned                    _outgroup;
 
         // Set using a setter function
         bool                        _show_details;
@@ -82,11 +83,12 @@ class GalaxData
         std::vector<double>         _coverage;
 	};
 
-GalaxData::GalaxData(const TreeCountsVector & tree_counts, const NameVector & tree_file_names, unsigned rooted_num_taxa)
+GalaxData::GalaxData(const TreeCountsVector & tree_counts, const NameVector & tree_file_names, unsigned rooted_num_taxa, unsigned outgroup)
   : _tree_file_names(tree_file_names),
     _tree_counts(tree_counts),
     _total_trees(0),
     _total_entropy(0.0),
+    _outgroup(outgroup),
     _total_D(0.0),
     _num_subsets((unsigned)_tree_counts.size()),
     _clade_H(_num_subsets+1, 0.0),
@@ -352,10 +354,11 @@ std::pair<unsigned,double> GalaxData::estimateCoverageForSubset(CCDMapType & ccd
 
             if (_show_details)
                 {
-                nontrivial_splits.insert(v[0]);
-                if (v[1].countOnBits() > 1)
+                if (v[0].countOnBits() > 1 && v[0].countOffBits() > 1)
+                    nontrivial_splits.insert(v[0]);
+                if (v[1].countOnBits() > 1 && v[1].countOffBits() > 1)
                     nontrivial_splits.insert(v[1]);
-                if (v[2].countOnBits() > 1)
+                if (v[2].countOnBits() > 1 && v[2].countOffBits() > 1)
                     nontrivial_splits.insert(v[2]);
                 log_prob += log(numer_count);
                 log_prob -= log(denom_count);
@@ -478,7 +481,7 @@ std::pair<unsigned,double> GalaxData::estimateMergedCoverage(CCDMapType & ccdmap
 
         if (_show_details)
             {
-            tm->buildFromSplitVector(SplitVector(nontrivial_splits.begin(), nontrivial_splits.end()), 1);
+            tm->buildFromSplitVector(SplitVector(nontrivial_splits.begin(), nontrivial_splits.end()), _outgroup);
             unsigned count = merged_tree_map[tree_id];
             std::string newick = tm->makeNewick(0, false);
             details += boost::str(boost::format("%20d %12d %12.5f  %s\n") % tree_number % count % log_prob % newick);
