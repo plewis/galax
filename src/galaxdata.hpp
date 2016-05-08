@@ -239,7 +239,7 @@ std::vector<double> GalaxData::finalizeClade(std::string & detailedinfostr)
 
     _Ipct[_num_subsets] = 100.0*_I[_num_subsets]/_total_entropy;
 
-    // Compute clade-specific D
+    // Compute clade-specific D (note: not percent of maximum D)
     double D = (sum_I/_num_subsets) - _I[_num_subsets];
 
     saveDetailedInfoForClade(detailedinfostr, D);
@@ -370,7 +370,8 @@ std::pair<unsigned,double> GalaxData::estimateCoverageForSubset(CCDMapType & ccd
 
         if (_show_details)
             {
-            tm->buildFromSplitVector(SplitVector(nontrivial_splits.begin(), nontrivial_splits.end()), 1);
+            //std::cerr << "***** Calling TreeManip::buildFromSplitVector with _outgroup = "<< _outgroup << std::endl;
+            tm->buildFromSplitVector(SplitVector(nontrivial_splits.begin(), nontrivial_splits.end()), _outgroup);
             unsigned count = treeMap[subset_index][tree_id];
             std::string newick = tm->makeNewick(0, false);
             details += boost::str(boost::format("%20d %12d %12.5f  %s\n") % tree_number % count % log_prob % newick);

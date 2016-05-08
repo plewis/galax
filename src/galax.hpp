@@ -26,7 +26,7 @@ class Galax
                                             Galax(const std::string outfile_prefix, const std::string version);
                                             ~Galax();
 
-        void                                run(std::string treefname, std::string listfname, unsigned skip, bool trees_rooted, bool save_details, unsigned outgroup_taxon);
+        void                                run(std::string treefname, std::string listfname, unsigned skip, bool trees_rooted, std::string maptofname, bool mapto_trees_rooted, bool save_details, unsigned outgroup_taxon);
 
     private:
 
@@ -35,14 +35,18 @@ class Galax
         void                                estimateInfo(CCDMapType & ccdmap, std::string & summaryinfostr, std::string & detailedinfostr, std::vector<GalaxInfo> & clade_info);
         void                                buildMajorityRuleTree(std::vector<GalaxInfo> & majrule_info, std::vector<GalaxInfo> & annotate_info, std::string & majrule_newick);
         void                                writeMajruleTreefile(std::string fnprefix, std::string & majrule_newick);
+        void                                mapToTree(std::string & maptofname, std::vector<GalaxInfo> & annotate_info, std::string & mapto_newick);
         void                                initTreeCCD(unsigned num_subsets);
         void                                processTrees(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap, unsigned subset_index, unsigned num_subsets);
-        void                                getTrees(std::string file_contents, unsigned skip);
+        void                                storeTrees(std::string file_contents, unsigned skip, std::vector< std::string > & tree_descriptions);
+        //void                              getTrees(std::string file_contents, unsigned skip);
         bool                                isNexusFile(const std::string & file_contents);
-        unsigned                            taxonNumberFromName(const std::string taxon_name);
+        unsigned                            taxonNumberFromName(const std::string taxon_name, bool add_if_missing);
         bool                                replaceTaxonNames(const std::string & newick_with_taxon_names, std::string & newick_with_taxon_numbers);
-        bool                                parseTranslate(const std::string & file_contents);
+        void                                parseTranslate(const std::string & file_contents);
         void                                getPhyloBayesNewicks(std::vector< std::string > & tree_descriptions, const std::string & file_contents, unsigned skip);
+        std::string                         standardizeNodeNumber(boost::smatch const & what);
+        std::string                         standardizeTreeDescription(std::string & newick);
         void                                getNewicks(std::vector< std::string > & tree_descriptions, const std::string & file_contents, unsigned skip);
         std::vector<std::string>            getTreeFileList(std::string listfname);
 
@@ -56,11 +60,13 @@ class Galax
         std::vector< std::string >          _merged_newicks;
         std::vector< unsigned >             _tree_counts;
         std::map< unsigned, std::string >   _translate;
-        std::map< std::string, unsigned >   _reverse_translate;
+        std::map< std::string, unsigned >   _taxon_map;
         boost::posix_time::ptime            _start_time;
         boost::posix_time::ptime            _end_time;
         double                              _total_seconds;
         bool                                _rooted;
+        bool                                _input_rooted;
+        bool                                _mapto_rooted;
         std::string                         _outfprefix;
         std::string                         _version;
         bool                                _show_details;

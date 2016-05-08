@@ -44,6 +44,8 @@ typedef std::vector< TreeIDSetType >              SubsetTreeSetType;    // used 
 typedef std::map< TreeIDType, unsigned >          TreeMapType;
 typedef std::vector< TreeMapType >                SubsetTreeMapType;    // used to store vector of maps relating tree IDs to counts of sampled trees
 
+typedef std::vector<GalaxInfo>                    GalaxInfoVector;
+
 template <class T>
 class TreeManip
     {
@@ -68,6 +70,8 @@ class TreeManip
         std::string                                     debugDescribeNode(T * node) const;
         std::string                                     debugDescribeTree() const;
 
+        void                                            annotateTree(GalaxInfoVector & annotate_info);
+
         void                                            clear() {_tree.reset();}
 
     protected:
@@ -82,6 +86,69 @@ class TreeManip
         typename Tree<T>::TreeShPtr                     _tree;
     };
 
+template <class T>
+inline void TreeManip<T>::annotateTree(GalaxInfoVector & annotate_info)
+    {
+    double log2 = log(2.0);
+    BOOST_FOREACH(T * nd, _tree->_preorder)
+        {
+        if (nd->_left_child)
+            {
+            bool split_found = false;
+            bool ic_computed = false;
+            BOOST_FOREACH(GalaxInfo & c, annotate_info)
+                {
+                Split asplit;
+                asplit.createFromPattern(c._name);
+                asplit.setWeight(c._value[2]);
+                if (nd->_split == asplit)
+                    {
+                    double info = c._value[0];
+                    double d    = c._value[1];
+                    double w    = c._value[2];
+
+                    nd->_split.setInfo(info);
+                    nd->_split.setWeight(w);
+                    nd->_split.setDisparity(d);
+
+                    split_found = true;
+                    }
+                else if (split_found && !asplit.isCompatible(nd->_split))
+                    {
+                    // calculate internode certainty
+                    //TODO: this can be done more efficiently using the conditional clade distribution
+                    double p = nd->_split.getWeight();
+                    double q = asplit.getWeight();
+                    double ic = 1.0 + (p/(p+q))*log(p/(p+q))/log2 + (q/(p+q))*log(q/(p+q))/log2;
+                    nd->_split.setCertainty(ic);
+                    ic_computed = true;
+                    break;
+                    }
+                }
+                
+            if (split_found)
+                {
+                if (!ic_computed)
+                    {
+                    nd->_split.setCertainty(1.0);    // no conflicting splits found
+                    }
+                }
+            else
+                {
+                nd->_split.setInfo(0.0);
+                nd->_split.setWeight(0.0);
+                nd->_split.setDisparity(0.0);
+                nd->_split.setCertainty(0.0);
+                }
+
+            double w = nd->_split.getWeight();
+            double i = nd->_split.getInfo();
+            double d = nd->_split.getDisparity();
+            double c = nd->_split.getCertainty();
+            nd->_edge_support = boost::str(boost::format("[&P=%.5f,I=%.5f,D=%.5f,IC=%.5f]") % w % i % d % c);
+            }
+        }
+    }
 
 template <class T>
 inline std::string TreeManip<T>::debugDescribeNode(T * node) const
@@ -807,7 +874,7 @@ inline void TreeManip<T>::buildFromNewick(const std::string newick, unsigned roo
                             //    {
                             //    std::cerr << "problematic tree description: " << nd->_name << std::endl;
                             //    }
-                            //assert(x > 0);
+                            assert(x > 0);
                             nd->_number = x - 1;
 #else
                             extractNodeNumberFromName(nd, used);
@@ -944,6 +1011,8 @@ inline void TreeManip<T>::buildFromSplitVector(const std::vector<Split> & split_
         T * subroot = _tree->_preorder[0];
         T * root = subroot->_parent;
 
+        //std::cerr << "***** Looping over all splits: rooting at " << root_at << std::endl;
+
         // Loop over all splits, pulling out taxa specified under a new ancestral node for each
         BOOST_FOREACH(Split & s, splits)
             {
@@ -964,7 +1033,10 @@ inline void TreeManip<T>::buildFromSplitVector(const std::vector<Split> & split_
             double i = s.getInfo();
             double d = s.getDisparity();
             double c = s.getCertainty();
-            std::string str = boost::str(boost::format("P=%.5f I=%.5f D=%.5f IC=%.5f") % w % i % d % c);
+            //std::string str = boost::str(boost::format("P=%.5f I=%.5f D=%.5f IC=%.5f") % w % i % d % c);
+            std::string str = boost::str(boost::format("[&P=%.5f,I=%.5f,D=%.5f,IC=%.5f]") % w % i % d % c);
+            //[&prob=1.00000000e+00,prob_stddev=0.00000000e+00,prob_range={1.00000000e+00,1.00000000e+00},prob(percent)="100",prob+-sd="100+-0"]
+            //[&P=1.0,I=0.0,D=0.0,IC=0.0]
             anc->_edge_support = str;
 
             // Detach nodes in s from tree and add each to anc
@@ -1035,7 +1107,8 @@ inline std::string TreeManip<T>::makeNewick(unsigned ndecimals, bool edge_suppor
     {
 	bool rooted = _tree->_is_rooted;
     boost::format edgelen_format(boost::str(boost::format(":%%.%df") % ndecimals));
-    boost::format edgelen_support_format(boost::str(boost::format("\"%%s\":%%.%df") % ndecimals));
+    //boost::format edgelen_support_format(boost::str(boost::format("\"%%s\":%%.%df") % ndecimals));
+    boost::format edgelen_support_format(boost::str(boost::format("%%s:%%.%df") % ndecimals));
 
     std::string s = "(";
     //std::cerr << s << std::endl;
@@ -1084,7 +1157,6 @@ inline std::string TreeManip<T>::makeNewick(unsigned ndecimals, bool edge_suppor
             s += boost::str(boost::format("%d") % (nd->_number + 1));
             if (ndecimals > 0)
                 s += boost::str(edgelen_format % nd->_edge_length);
-            //std::cerr << s << std::endl;
 
 			if (nd->_right_sib)
                 {
@@ -1106,7 +1178,6 @@ inline std::string TreeManip<T>::makeNewick(unsigned ndecimals, bool edge_suppor
                         s += boost::str(edgelen_support_format % anc->_edge_support % anc->_edge_length);
                     else if (ndecimals > 0)
                         s += boost::str(edgelen_format % anc->_edge_length);
-                    //std::cerr << s << std::endl;
                     assert(open_parens > 0);
                     --open_parens;
 					}

@@ -25,6 +25,8 @@ unsigned minor_version = 0;
 unsigned bugfix_version = 0;
 std::string tree_file_name = "";
 std::string list_file_name = "";
+std::string mapto_file_name = "";
+bool mapto_trees_rooted = false;
 std::string output_file_name = "output-galax";
 unsigned skipped_newicks = 0;
 unsigned outgroup_taxon = 1;
@@ -47,6 +49,8 @@ void processCommandLineOptions(int argc, const char * argv[])
         ("listfile,l", boost::program_options::value<std::string>(), "name of file listing whitespace-separated, NEXUS-formatted tree file names to be processed")
         ("outfile,o", boost::program_options::value<std::string>(), "file name prefix of output file to create (.txt extension will be added)")
         ("outgroup,g", boost::program_options::value<unsigned>(), "number of taxon to use as the outgroup (where first taxon listed in treefile translate statement is 1)")
+        ("mapto,m", boost::program_options::value<std::string>(), "information estimates will be mapped onto this tree in addition to the merged consensus tree")
+        ("maptorooted,e", boost::program_options::bool_switch()->default_value(false), "mapto tree file contains rooted trees (leave out this option to assume unrooted)")
         ;
     boost::program_options::store(boost::program_options::parse_command_line(argc, argv, desc), vm);
 #if 0
@@ -147,6 +151,18 @@ void processCommandLineOptions(int argc, const char * argv[])
         std::exit(1);
         }
 
+    // If user provided --mapto on command line or mapto=<file name> in config file, store supplied file name
+    if (vm.count("mapto") > 0)
+        {
+        mapto_file_name = vm["mapto"].as<std::string>();
+        }
+
+    // If user used --maptorooted on command line, expect trees in specified mapto tree file to be rooted
+    if (vm.count("maptorooted"))
+        {
+        mapto_trees_rooted = vm["maptorooted"].as<bool>();
+        }
+
     // Output feedback to reassure user
 
     if (list_file_name.length() > 0 && tree_file_name.length() > 0)
@@ -174,6 +190,15 @@ void processCommandLineOptions(int argc, const char * argv[])
         std::cout << "Only summary information will be saved" << std::endl;
         }
 
+    if (mapto_file_name.length() > 0)
+        {
+        std::cout << "Information will be mapped to " << mapto_file_name << " in addition to the merged consensus tree" << std::endl;
+        }
+    else
+        {
+        std::cout << "Information will be mapped only to the merged consensus tree because no --mapto tree file was specified" << std::endl;
+        }
+
     if (trees_rooted)
         std::cout << "Trees assumed to be rooted" << std::endl;
     else
@@ -195,7 +220,7 @@ int main(int argc, const char * argv[])
     try
         {
         processCommandLineOptions(argc, argv);
-        Galax(output_file_name, boost::str(boost::format("%d.%d.%d") % major_version % minor_version % bugfix_version)).run(tree_file_name, list_file_name, skipped_newicks, trees_rooted, save_details, outgroup_taxon);
+        Galax(output_file_name, boost::str(boost::format("%d.%d.%d") % major_version % minor_version % bugfix_version)).run(tree_file_name, list_file_name, skipped_newicks, trees_rooted, mapto_file_name, mapto_trees_rooted, save_details, outgroup_taxon);
         }
     catch (boost::program_options::unknown_option & x)
         {

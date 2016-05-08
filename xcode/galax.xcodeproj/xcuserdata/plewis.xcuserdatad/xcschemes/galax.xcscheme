@@ -47,7 +47,7 @@
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       launchStyle = "0"
       useCustomWorkingDirectory = "YES"
-      customWorkingDirectory = "/Users/plewis/Documents/manuscripts/to-be-written/bayesinfo/manuscript/secondtry/supplementary/galax"
+      customWorkingDirectory = "/Users/plewis/Documents/manuscripts/to-be-written/bayesinfo/manuscript/secondtry/second-try-reviews/ntax7"
       ignoresPersistentStateOnLaunch = "NO"
       debugDocumentVersioning = "YES"
       debugServiceExtension = "internal"
@@ -68,7 +68,7 @@
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "figure2.tre"
+            argument = "mcmc.run1.t"
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
@@ -76,19 +76,11 @@
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "0"
+            argument = "1113"
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
             argument = "--details"
-            isEnabled = "YES">
-         </CommandLineArgument>
-         <CommandLineArgument
-            argument = "--outgroup"
-            isEnabled = "YES">
-         </CommandLineArgument>
-         <CommandLineArgument
-            argument = "8"
             isEnabled = "YES">
          </CommandLineArgument>
       </CommandLineArguments>

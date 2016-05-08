@@ -10,8 +10,10 @@
 #include <limits>
 #include <algorithm>
 #include <sstream>
+#include <boost/bind.hpp>
 #include <boost/format.hpp>
 #include <boost/lambda/lambda.hpp>
+#include <boost/algorithm/string/join.hpp>
 #include "galax.hpp"
 #include "galaxutil.hpp"
 #include "galaxinfo.hpp"
@@ -32,38 +34,62 @@ Galax::~Galax()
     {
     }
 
-void Galax::getTrees(std::string file_contents, unsigned skip)
+void Galax::storeTrees(std::string file_contents, unsigned skip, std::vector< std::string > & tree_descriptions)
     {
     _start_time = getCurrentTime();
 
-    std::vector< std::string > tree_descriptions;
     if (isNexusFile(file_contents))
         {
-        bool complete = parseTranslate(file_contents);
-        if (!complete)
-            throw XGalax("Galax requires taxa to be the same for all tree files processed.");
-
+        parseTranslate(file_contents);
         getNewicks(tree_descriptions, file_contents, skip);
         }
     else
         {
-        getPhyloBayesNewicks(tree_descriptions, file_contents, skip);
+        throw XGalax("Galax currently requires tree files to be in NEXUS format.");
+        //getPhyloBayesNewicks(tree_descriptions, file_contents, skip);
 
         //TODO: this is ugly - try to get rid of _reverse_translate by converting _translate to map(string, int) rather than map(int, string)
-        _translate.clear();
-        for (std::map< std::string, unsigned>::iterator it = _reverse_translate.begin(); it != _reverse_translate.end(); ++it)
-            {
-            _translate[it->second] = it->first;
-            }
+        //_translate.clear();
+        //for (std::map< std::string, unsigned>::iterator it = _reverse_translate.begin(); it != _reverse_translate.end(); ++it)
+        //    {
+        //    _translate[it->second] = it->first;
+        //    }
         }
-    _tree_counts.push_back((unsigned)tree_descriptions.size());
-    _newicks.clear();
-    _newicks.insert(_newicks.end(), tree_descriptions.begin(), tree_descriptions.end());
-    _merged_newicks.insert(_merged_newicks.end(), tree_descriptions.begin(), tree_descriptions.end());
 
     _end_time = getCurrentTime();
     _total_seconds += secondsElapsed(_start_time, _end_time);
     }
+
+//void Galax::getTrees(std::string file_contents, unsigned skip)
+//    {
+//    _start_time = getCurrentTime();
+//
+//    std::vector< std::string > tree_descriptions;
+//    if (isNexusFile(file_contents))
+//        {
+//        parseTranslate(file_contents);
+//        getNewicks(tree_descriptions, file_contents, skip);
+//        }
+//    else
+//        {
+//        throw XGalax("Galax currently requires tree files to be in NEXUS format.");
+//        //getPhyloBayesNewicks(tree_descriptions, file_contents, skip);
+//
+//        //TODO: this is ugly - try to get rid of _reverse_translate by converting _translate to map(string, int) rather than map(int, string)
+//        //_translate.clear();
+//        //for (std::map< std::string, unsigned>::iterator it = _reverse_translate.begin(); it != _reverse_translate.end(); ++it)
+//        //    {
+//        //    _translate[it->second] = it->first;
+//        //    }
+//        }
+//    _tree_counts.push_back((unsigned)tree_descriptions.size());
+//    _newicks.clear();
+//    _newicks.insert(_newicks.end(), tree_descriptions.begin(), tree_descriptions.end());
+//    _merged_newicks.insert(_merged_newicks.end(), tree_descriptions.begin(), tree_descriptions.end());
+//
+//    _end_time = getCurrentTime();
+//    _total_seconds += secondsElapsed(_start_time, _end_time);
+//    }
 
 std::vector<std::string> Galax::getTreeFileList(std::string listfname)
     {
@@ -89,20 +115,25 @@ bool Galax::isNexusFile(const std::string & file_contents)
     return is_nexus_file;
     }
 
-unsigned Galax::taxonNumberFromName(const std::string taxon_name)
+unsigned Galax::taxonNumberFromName(const std::string taxon_name, bool add_if_missing)
     {
     unsigned taxon_number = 0;
-    std::map< std::string, unsigned >::iterator it = _reverse_translate.find(taxon_name);
-    if (it != _reverse_translate.end())
+    std::map< std::string, unsigned >::iterator it = _taxon_map.find(taxon_name);
+    if (it != _taxon_map.end())
         {
         // taxon_name is an existing key, so return its value
         taxon_number = it->second;
         }
     else
         {
-        // taxon_name is not an existing key, so create an entry for it
-        taxon_number = (unsigned)(_reverse_translate.size() + 1);
-        _reverse_translate[taxon_name] = taxon_number;
+        if (add_if_missing)
+            {
+            // taxon_name is not an existing key, so create an entry for it
+            taxon_number = (unsigned)(_taxon_map.size() + 1);
+            _taxon_map[taxon_name] = taxon_number;
+            }
+        else
+            throw XGalax(boost::str(boost::format("Could not find %s in _taxon_map keys") % taxon_name));
         }
 
     return taxon_number;
@@ -120,17 +151,12 @@ bool Galax::replaceTaxonNames(const std::string & newick_with_taxon_names, std::
         boost::smatch what = *m1;
         newick_with_taxon_numbers.append(what.prefix());
         newick_with_taxon_numbers.append(what[0].first, what[1].first) ;
-        unsigned n = taxonNumberFromName(what[1].str());
+        unsigned n = taxonNumberFromName(what[1].str(), true);
         if (n > 0)
             {
-#           if 0
-                // to_string not available on some systems
-                newick_with_taxon_numbers.append(std::to_string(n));
-#           else
-                std::ostringstream oss;
-                oss << n;
-                newick_with_taxon_numbers.append(oss.str());
-#           endif
+            std::ostringstream oss;
+            oss << n;
+            newick_with_taxon_numbers.append(oss.str());
             }
         else
             {
@@ -143,15 +169,14 @@ bool Galax::replaceTaxonNames(const std::string & newick_with_taxon_names, std::
     return true;
     }
 
-bool Galax::parseTranslate(const std::string & file_contents)
+void Galax::parseTranslate(const std::string & file_contents)
     {
-    unsigned prev_ntaxa = (unsigned)_translate.size();
+    _translate.clear();
 
-    // Will either add to an empty _translate or check values if _translate has been created previously
-
-    // This set will contain the taxon index of all taxa encountered in translate statement. It should have the
-    // same number of elements as _translate has keys when done, otherwise this file lacks one or more taxa
-    std::vector<unsigned> taxa_seen;
+    // The first time this function is called, the _translate command will be used to establish a _taxon_map
+    // such that _taxon_map[<taxon name>] = <taxon index>. Subsequent calls will create _translate anew but
+    // will not modify _taxon_map; however, an exception is thrown if a taxon is about to be added to _translate
+    // that is not a key in _taxon_map.
 
     // First, separate out the contents of the translate statement from the rest of the tree file
     std::string translate_contents;
@@ -187,22 +212,35 @@ bool Galax::parseTranslate(const std::string & file_contents)
             throw XGalax("Could not interpret taxon index in translate statement as a number");
             }
 
-        taxa_seen.push_back(taxon_index);
-
         // efficientAddOrCheck returns valid iterator on first insertion or if identical association already previously made
         if (efficientAddOrCheck(_translate, taxon_index, what[2].str()) == _translate.end())
             throw XGalax(boost::str(boost::format("Taxon name (%s) does not match name already associated (%s) with taxon %d") % what[2].str() % _translate[taxon_index] % taxon_index));
         }
 
-    // Check to make sure this file does not have one or more additional taxa than files previously processed
-    if (prev_ntaxa > 0 && prev_ntaxa < _translate.size())
-        return false;
+    typedef std::map< unsigned, std::string > translate_t;
+    typedef std::map< std::string, unsigned > taxonmap_t;
+    if (_taxon_map.empty())
+        {
+        // Copy _translate to _taxon_map
+        BOOST_FOREACH(translate_t::value_type & p, _translate)
+            {
+            _taxon_map[p.second] = p.first;
+            }
+        }
+    else
+        {
+        // Check to make sure this file does not have more or fewer taxa than files previously processed
+        if (_translate.size() != _taxon_map.size())
+           throw XGalax("Galax requires taxa to be the same for all tree files processed.");
 
-    // Check to make sure this file does not have one or more fewer taxa than files previously processed
-    if (taxa_seen.size() < _translate.size())
-       return false;
-
-    return true;
+        // Check to make sure all taxa in _translate are keys in _taxon_map
+        BOOST_FOREACH(translate_t::value_type & p, _translate)
+            {
+            taxonmap_t::iterator it = _taxon_map.lower_bound(p.second);
+            if (it == _taxon_map.end())
+                throw XGalax(boost::str(boost::format("Taxon name (%s) does not match any name stored for tree files read previously") % p.second));
+            }
+        }
     }
 
 void Galax::getPhyloBayesNewicks(std::vector< std::string > & tree_descriptions, const std::string & file_contents, unsigned skip)
@@ -226,13 +264,34 @@ void Galax::getPhyloBayesNewicks(std::vector< std::string > & tree_descriptions,
         }
     }
 
+std::string Galax::standardizeNodeNumber(boost::smatch const & what)
+    {
+    int x = atoi(what[2].str().c_str());
+
+    // ensure that node numbers correspond to taxon indices stored in taxon_map,
+    // which are not necessarily the same as those used in the translate command that
+    // was in the tree file
+    std::string & stored_taxon_name = _translate[x];
+    unsigned stored_taxon_index = _taxon_map[stored_taxon_name];
+    std::string s = boost::str(boost::format("%s%d") % what[1] % stored_taxon_index);
+    return s;
+    }
+
+std::string Galax::standardizeTreeDescription(std::string & newick_in)
+    {
+    // Search for node numbers in newick_in and replace them with standard node numbers stored in _taxon_map
+    boost::regex re("([(,])(\\d+)");
+    boost::function<std::string (boost::smatch const &)> function = boost::bind(&Galax::standardizeNodeNumber, this, _1);
+    std::string newick_out = boost::regex_replace(newick_in, re, function);
+    return newick_out;
+    }
+
 void Galax::getNewicks(std::vector< std::string > & tree_descriptions, const std::string & file_contents, unsigned skip)
     {
     // tree STATE_0 [&lnP=-4493.80476846934,posterior=-4493.80476846934] = [&R] (9:[&rate=0.49971158909783764]1851.4724462198697,((1:[&rate=0.5965730394621352]292.73199858783727,(10:[&rate=0.6588031360335018]30.21172743645451,5:[&rate=0.7098036299867017]30.21172743645451):[&rate=1.0146941544458208]262.52027115138276):[&rate=1.0649642758561977]510.452441519872,((8:[&rate=0.7554924641162211]145.1076605992074,(7:[&rate=0.7984750329147966]64.0435017480143,6:[&rate=0.8402528958963882]64.0435017480143):[&rate=1.1206854064651213]81.06415885119311):[&rate=1.1844450597679457]522.823827314411,((3:[&rate=0.8818808237868384]60.2962343089954,4:[&rate=0.9242396697890951]60.2962343089954):[&rate=1.260685743226102]12.793802911399744,2:[&rate=0.9681896872253556]73.09003722039515):[&rate=1.3582802932633053]594.8414506932232):[&rate=1.4999660689010508]135.25295219409088):[&rate=1.7907115550989796]1048.2880061121605);
     // tree STATE_0 [&lnP=-222468.46405040708,posterior=-222468.46405040708] = [&R] (((((((13:[&rate=0.41948130885774293]6.2959114346539975,((7:[&rate=0.4835763823640333]0.13550093579331035,1:[&rate=0.5209684767630073]0.13550093579331035):[&rate=0.9635652545109973]0.5551042325454463,15:[&rate=0.5492827727849298]0.6906051683387566):[&rate=0.9755113666282312]5.605306266315241):[&rate=0.9876472559631831]10.322795910985544,(17:[&rate=0.5728193948810578]5.685111439869553,2:[&rate=0.5933667775296758]5.685111439869553):[&rate=0.9999937594617617]10.93359590576999):[&rate=1.0125732516497858]5.142489242495607,(5:[&rate=0.6118563212473699]0.15949221153379095,28:[&rate=0.6288406629410516]0.15949221153379095):[&rate=1.0254099216508532]21.601704376601358):[&rate=1.038530094409559]116.24314628707417,(((29:[&rate=0.6446773336086477]0.762443175497069,8:[&rate=0.6596124676296977]0.762443175497069):[&rate=1.051962607302118]22.93607986063065,(23:[&rate=0.6738236879118028]0.5047866135985948,21:[&rate=0.6874440397483901]0.5047866135985948):[&rate=1.0657392562843637]23.193736422529124):[&rate=1.0798953297143943]16.280424093309122,20:[&rate=0.7005762553101323]39.97894712943684):[&rate=1.0944702533868567]98.02539574577247):[&rate=1.1095083777014945]20.87666238489902,18:[&rate=0.713301711000359]158.88100526010834):[&rate=1.1250599481079797]25.369142391234874,(((((6:[&rate=0.7256862972167103]4.157046671443346,27:[&rate=0.7377844041897827]4.157046671443346):[&rate=1.1411823142956972]0.4216380394703174,31:[&rate=0.749641711811296]4.578684710913663):[&rate=1.157941453976706]2.7888871791074665,((14:[&rate=0.7612971942888511]0.4820008033421106,26:[&rate=0.7727845943689399]0.4820008033421106):[&rate=1.175413916572047]2.1006906770419045,33:[&rate=0.7841335302910268]2.582691480384015):[&rate=1.1936893354723344]4.784880409637115):[&rate=1.2128737226386077]28.320425658481167,(4:[&rate=0.7953703429930343]9.047384492551547,19:[&rate=0.8065187562334204]9.047384492551547):[&rate=1.2330938592149618]26.640613055950748):[&rate=1.254503252991522]144.44188595962413,(34:[&rate=0.8176003998695023]49.84530458500085,(((35:[&rate=0.8286352317599452]4.64783851774415,9:[&rate=0.8396418838264186]4.64783851774415):[&rate=1.2772903877797566]17.7189245645138,(12:[&rate=0.8506379510097704]9.214275524579357,(3:[&rate=0.8616402371306506]6.8925402326469944,32:[&rate=0.8726649683413712]6.8925402326469944):[&rate=1.301690414163583]2.321735291932362):[&rate=1.3280021656518173]13.152487557678594):[&rate=1.356613709910537]7.407288154720803,((30:[&rate=0.8837279825004343]3.4163490119965814,25:[&rate=0.8948449011281925]3.4163490119965814):[&rate=1.3880421571600987]13.604316647910641,24:[&rate=0.9060312894219462]17.020665659907223):[&rate=1.422998494768541]12.75338557707153):[&rate=1.4624990961768445]20.071253348022093):[&rate=1.5080711470564487]130.2845789231256):[&rate=1.5621665830644125]4.120264143216787):[&rate=1.6291050095698845]125.24494247082069,(16:[&rate=0.9173028089947355]35.446341908327426,((22:[&rate=0.9286753674700471]0.013463304338836088,11:[&rate=0.940165268760073]0.013463304338836088):[&rate=1.7176458014779916]7.67054782472139,10:[&rate=0.9517893784722757]7.6840111290602255):[&rate=1.8504611669408024]27.762330779267202):[&rate=2.133204264216236]274.04874821383646);
     // tree STATE_0 = ((((1:0.015159374158485823,6:0.015159374158485823):0.0064804882886747035,2:0.021639862447160527):0.104324463428508,5:0.12596432587566853):0.30645174794996116,(3:0.4084347373105321,4:0.4084347373105321):0.023981336515097595):0.0;
     tree_descriptions.clear();
-    //boost::regex re("^\\s*[Tt]ree.+?(\\(.+?\\))\\s*;\\s*$");
     boost::regex re("^\\s*[Tt]ree(.+?);");
     boost::sregex_iterator m1(file_contents.begin(), file_contents.end(), re);
     boost::sregex_iterator m2;  // empty iterator used only to detect when we are done
@@ -244,9 +303,8 @@ void Galax::getNewicks(std::vector< std::string > & tree_descriptions, const std
             {
             std::string stripped = stripComments( what[1].str() );
             std::string newick_only = stripTreeName(stripped);
-            //std::cerr << "*** stripped:    " << stripped << std::endl; //temporary
-            //std::cerr << "*** newick_only: " << newick_only << std::endl; //temporary
-            tree_descriptions.push_back(newick_only);
+            std::string std_newick = standardizeTreeDescription(newick_only);
+            tree_descriptions.push_back(std_newick);
             }
         n += 1;
         }
@@ -274,7 +332,7 @@ void Galax::processTrees(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap
     _total_seconds += secondsElapsed(_start_time, _end_time);
     }
 
-void Galax::writeInfoProfile(TreeManip<Node>::TreeManipShPtr tm, std::vector<GalaxInfo> & clade_info)
+void Galax::writeInfoProfile(TreeManip<Node>::TreeManipShPtr tm, GalaxInfoVector & clade_info)
     {
     _start_time = getCurrentTime();
 
@@ -285,7 +343,7 @@ void Galax::writeInfoProfile(TreeManip<Node>::TreeManipShPtr tm, std::vector<Gal
 
     // Create a map from clade_info that provides the information content for any given clade
     std::map< std::string, double > clade_map;
-    for (std::vector<GalaxInfo>::const_iterator gi = clade_info.begin(); gi != clade_info.end(); ++gi)
+    for (GalaxInfoVector::const_iterator gi = clade_info.begin(); gi != clade_info.end(); ++gi)
         {
         const GalaxInfo & ginfo = *gi;
         double Iprop =ginfo._value[0]/100.0;
@@ -382,7 +440,7 @@ void Galax::debugShowCCDMap(CCDMapType & ccdmap, unsigned subset_index)
         }
     }
 
-void Galax::estimateInfo(CCDMapType & ccdmap, std::string & summaryinfostr, std::string & detailedinfostr, std::vector<GalaxInfo> & clade_info)
+void Galax::estimateInfo(CCDMapType & ccdmap, std::string & summaryinfostr, std::string & detailedinfostr, GalaxInfoVector & clade_info)
     {
     // ccdmap: key = SplitVector defining (un)conditional clade, value = CountVector (counts for each subset)
     // summaryinfostr: holds summary output over all clades
@@ -397,9 +455,11 @@ void Galax::estimateInfo(CCDMapType & ccdmap, std::string & summaryinfostr, std:
     bool first = true;
     std::vector<double> tmp;
 
-    // Create a GalaxData object to so most of the work
+    //std::cerr << "***** In Galax::estimateInfo, _outgroup = " << (_rooted ? 0 : _outgroup) << std::endl;
+
+    // Create a GalaxData object to do most of the work
     unsigned ntaxa = (unsigned)_translate.size();
-    GalaxData gd(_tree_counts, _treefile_names, (_rooted ? ntaxa : ntaxa - 1), _outgroup);
+    GalaxData gd(_tree_counts, _treefile_names, (_rooted ? ntaxa : ntaxa - 1), (_rooted ? 0 : _outgroup));
     if (_show_details)
         gd.setShowDetails(true);
     else
@@ -432,7 +492,7 @@ void Galax::estimateInfo(CCDMapType & ccdmap, std::string & summaryinfostr, std:
         {
         // *it comprises a key (SplitVector) and a value (CountVector)
         // it->first is the key: it is a vector containing either
-        //       a) 1 split (represents and unconditional clade probability) or
+        //       a) 1 split (represents an unconditional clade probability) or
         //       b) 3 splits (represents a conditional clade probability, with
         //          first split being parent clade and remaining two splits
         //          representing the bipartition of that parent split)
@@ -455,7 +515,6 @@ void Galax::estimateInfo(CCDMapType & ccdmap, std::string & summaryinfostr, std:
             }
         else
             {
-            // Not first conditional clade entry in ccdmap
             if ((it->first)[0] == clade)
                 {
                 // Conditional clade entry whose parent is clade
@@ -465,9 +524,14 @@ void Galax::estimateInfo(CCDMapType & ccdmap, std::string & summaryinfostr, std:
                 {
                 // Just found next unconditional clade entry, so now is the time to finish computing
                 // information content for the previous clade
+
                 tmp = gd.finalizeClade(detailedinfostr);
                 gd.newClade(it->first, it->second);
 
+                // tmp[0] = Ipct
+                // tmp[1] = D (not Dpct)
+                // tmp[2] = P
+                // tmp[3] = I
                 clade_info.push_back(GalaxInfo(clade.createPatternRepresentation(), tmp));
                 clade = (it->first)[0];
                 }
@@ -485,7 +549,39 @@ void Galax::estimateInfo(CCDMapType & ccdmap, std::string & summaryinfostr, std:
     _total_seconds += secondsElapsed(_start_time, _end_time);
     }
 
-void Galax::buildMajorityRuleTree(std::vector<GalaxInfo> & majrule_info, std::vector<GalaxInfo> & annotate_info, std::string & majrule_newick)
+void Galax::mapToTree(std::string & maptofname, GalaxInfoVector & annotate_info, std::string & mapto_newick)
+    {
+    _start_time = getCurrentTime();
+
+    _rooted = _mapto_rooted;
+
+    // Read tree file maptofname and store newick tree descriptions therein
+    mapto_newick.clear();
+    std::string file_contents;
+    getFileContents(file_contents, maptofname);
+    std::vector< std::string > newicks;
+    storeTrees(file_contents, 0, newicks);
+
+    // Build the first newick tree description
+    TreeManip<Node>::TreeManipShPtr tm(new TreeManip<Node>());
+    tm->buildFromNewick(newicks[0], (_rooted ? 0 : _outgroup));
+
+    // Ensure that annotate_info is sorted so that the clades with highest posterior are first
+    // This is important only for calculation of IC
+    GalaxInfo::_sortby_index = 2;   // 0=Ipct, 1=D, 2=w, 3=I
+    std::sort(annotate_info.begin(), annotate_info.end(), std::greater<GalaxInfo>());
+
+    // Walk through tree calling setInfo, setWeight, setDisparity, and setCertainty for each internal node
+    tm->annotateTree(annotate_info);
+
+    // Create annotated newick tree description
+    mapto_newick = tm->makeNewick(5, true);
+
+    _end_time = getCurrentTime();
+    _total_seconds += secondsElapsed(_start_time, _end_time);
+    }
+
+void Galax::buildMajorityRuleTree(GalaxInfoVector & majrule_info, GalaxInfoVector & annotate_info, std::string & majrule_newick)
     {
     _start_time = getCurrentTime();
 
@@ -591,15 +687,27 @@ void Galax::writeMajruleTreefile(std::string fnprefix, std::string & majrule_new
     std::string treefname = boost::str(boost::format("%s-%s.tre") % _outfprefix % fnprefix);
     _treef.open(treefname.c_str());
 
+    // Output the translate command
     _treef << "#nexus\n\nbegin trees;\n  translate\n";
-    typedef std::map<unsigned, std::string> translate_map_type;
-    translate_map_type::iterator it = _translate.begin();
-    _treef << "  " << it->first << " '" << it->second << "'";
-    for (; it != _translate.end(); ++it)
+    typedef std::map<std::string, unsigned > taxon_map_type;
+#if 0
+    taxon_map_type::iterator it = _taxon_map.begin();
+    _treef << "  " << it->second << " '" << it->first << "'";
+    for (; it != _taxon_map.end(); ++it)
         {
-        _treef << ",\n  " << it->first << " '" << it->second << "'";
+        _treef << ",\n  " << it->second << " '" << it->first << "'";
         }
-    _treef << ";\ntree majrule = " << majrule_newick << ";\nend;" << std::endl;
+#else
+    std::vector<std::string> translate_elements(_taxon_map.size());
+    BOOST_FOREACH(taxon_map_type::value_type & p, _taxon_map)
+        {
+        translate_elements[p.second - 1] = boost::str(boost::format("    %d '%s'") % p.second % p.first);
+        }
+    _treef << boost::algorithm::join(translate_elements, ",\n") << ";" << std::endl;
+#endif
+
+    // Output the tree command
+    _treef << "tree majrule = " << majrule_newick << ";\nend;" << std::endl;
     _treef.close();
 
     _end_time = getCurrentTime();
@@ -620,7 +728,7 @@ void Galax::initTreeCCD(unsigned num_subsets)
         }
     }
 
-void Galax::run(std::string treefname, std::string listfname, unsigned skip, bool rooted, bool details, unsigned outgroup_taxon)
+void Galax::run(std::string treefname, std::string listfname, unsigned skip, bool trees_rooted, std::string maptofname, bool mapto_trees_rooted, bool save_details, unsigned outgroup_taxon)
     {
     assert (_ALLSUBSETS == (unsigned)(-1));
 	try
@@ -631,18 +739,22 @@ void Galax::run(std::string treefname, std::string listfname, unsigned skip, boo
         // Start by reporting settings used
         _outf << "Galax " << _version << "\n\n";
         _outf << "Options specified:\n";
-        _outf << "  --treefile: " << treefname << "\n";
-        _outf << "  --listfile: " << listfname << "\n";
-        _outf << "      --skip: " << skip << "\n";
-        _outf << "    --rooted: " << (rooted ? "true" : "false") << "\n";
-        _outf << "   --details: " << (details ? "true" : "false") << "\n";
-        _outf << "  --outgroup: " << outgroup_taxon << "\n";
-        _outf << "   --outfile: " << _outfprefix << "\n";
+        _outf << "   --treefile: " << treefname << "\n";
+        _outf << "   --listfile: " << listfname << "\n";
+        _outf << "       --skip: " << skip << "\n";
+        _outf << "     --rooted: " << (trees_rooted ? "true" : "false") << "\n";
+        _outf << "    --details: " << (save_details ? "true" : "false") << "\n";
+        _outf << "   --outgroup: " << outgroup_taxon << "\n";
+        _outf << "    --outfile: " << _outfprefix << "\n";
+        _outf << "      --mapto: " << maptofname << "\n";
+        _outf << "--maptorooted: " << (mapto_trees_rooted ? "true" : "false") << "\n";
         _outf << std::endl;
 
-        _show_details = details;
+        _show_details = save_details;
         _outgroup = outgroup_taxon;
-        _rooted = rooted;
+        _input_rooted = trees_rooted;
+        _mapto_rooted = mapto_trees_rooted;
+        _rooted = _input_rooted;
         if (!_rooted && _outgroup == 0)
             throw XGalax("outgroup taxon specified must be a number greater than zero unless trees are rooted (in which case outgroup specification is ignored)");
 
@@ -670,27 +782,37 @@ void Galax::run(std::string treefname, std::string listfname, unsigned skip, boo
             //
             // --treefile provided on command line
             //
-            getFileContents(file_contents, treefname);
-            getTrees(file_contents, skip);
             initTreeCCD(1);
             _ccdtree.clear();
+            getFileContents(file_contents, treefname);
+            std::vector< std::string > tree_descriptions;
+            storeTrees(file_contents, skip, tree_descriptions);
+            _tree_counts.push_back((unsigned)tree_descriptions.size());
+            _newicks.clear();
+            _newicks.insert(_newicks.end(), tree_descriptions.begin(), tree_descriptions.end());
+            _merged_newicks.insert(_merged_newicks.end(), tree_descriptions.begin(), tree_descriptions.end());
             processTrees(tm, _ccdtree, 0, 1);
 
             std::string msg = boost::str(boost::format("Read %d trees from tree file %s\n") % _newicks.size() % treefname);
             std::cout << msg;
             _outf << msg;
 
-            std::vector<GalaxInfo> majrule_clade_info;
+            GalaxInfoVector majrule_clade_info;
             std::vector<Split> majrule_splits;
             std::string majrule_tree;
             estimateInfo(_ccdtree, summaryinfostr, detailedinfostr, majrule_clade_info);
             buildMajorityRuleTree(majrule_clade_info, majrule_clade_info, majrule_tree);
             writeMajruleTreefile("majrule", majrule_tree);
-            if (_rooted)
-                {
-                // profiling informativeness only makes sense for ultrametric trees
-                writeInfoProfile(tm, majrule_clade_info);
-                }
+
+            //std::string mapto_tree;
+            //mapToTree(majrule_clade_info, majrule_clade_info, mapto_tree);
+            //writeMajruleTreefile("@@@", mapto_tree);
+
+            //if (_rooted)
+            //    {
+            //    // profiling informativeness only makes sense for ultrametric trees
+            //    writeInfoProfile(tm, majrule_clade_info);
+            //    }
             }
         else
             {
@@ -707,18 +829,31 @@ void Galax::run(std::string treefname, std::string listfname, unsigned skip, boo
                 {
                 file_contents.clear();
                 getFileContents(file_contents, tree_file_name);
-                getTrees(file_contents, skip);
+                std::vector< std::string > tree_descriptions;
+                storeTrees(file_contents, skip, tree_descriptions);
+                _tree_counts.push_back((unsigned)tree_descriptions.size());
+                _newicks.clear();
+                _newicks.insert(_newicks.end(), tree_descriptions.begin(), tree_descriptions.end());
+                _merged_newicks.insert(_merged_newicks.end(), tree_descriptions.begin(), tree_descriptions.end());
                 processTrees(tm, _ccdlist, subset_index++, (unsigned)_treefile_names.size());
                 std::string msg = boost::str(boost::format("Read %d trees from tree file %s\n") % _newicks.size() % tree_file_name);
                 std::cout << msg;
                 _outf << msg;
                 }
-            std::vector<GalaxInfo> merged_clade_info;
+            GalaxInfoVector merged_clade_info;
             std::vector<Split> merged_splits;
             std::string merged_tree;
             estimateInfo(_ccdlist, summaryinfostr, detailedinfostr, merged_clade_info);
             buildMajorityRuleTree(merged_clade_info, merged_clade_info, merged_tree);
             writeMajruleTreefile("merged", merged_tree);
+
+            if (maptofname.size() > 0)
+                {
+                std::string mapto_tree;
+                mapToTree(maptofname, merged_clade_info, mapto_tree);
+                writeMajruleTreefile("mapped", mapto_tree);
+                }
+
             }
 
         if (_rooted)
@@ -732,7 +867,7 @@ void Galax::run(std::string treefname, std::string listfname, unsigned skip, boo
         _outf << "\n" << summaryinfostr;
         _outf.close();
 
-        if (details)
+        if (save_details)
             {
             std::string detailsfname = std::string(_outfprefix + "-details.txt");
             _detailsf.open(detailsfname.c_str());
