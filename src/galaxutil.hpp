@@ -12,7 +12,7 @@
 #include <cmath>
 #include <string>
 #include <set>
-#include <boost/regex.hpp>
+#include <regex>
 #include <boost/algorithm/string.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
@@ -177,9 +177,9 @@ inline void extractAllWhitespaceDelimitedStrings(std::vector<std::string> & rece
     receiving_vector.clear();
 
     // Use regular expression to divide text_to_process into whitespace-delimited strings, which are stored in receiving_vector
-    boost::regex re("\\s+");
-    boost::sregex_token_iterator i(text_to_process.begin(), text_to_process.end(), re, -1);
-    boost::sregex_token_iterator j;
+    std::regex re("\\s+");
+    std::sregex_token_iterator i(text_to_process.begin(), text_to_process.end(), re, -1);
+    std::sregex_token_iterator j;
 
     while(i != j)
         {
@@ -189,16 +189,18 @@ inline void extractAllWhitespaceDelimitedStrings(std::vector<std::string> & rece
 
 inline std::string stripComments(const std::string & commented_nexus_text)
     {
-    boost::regex re("\\[.+?\\]");
-    return boost::regex_replace(commented_nexus_text, re, std::string());
+    //std::regex re("\\[.+?\\]");
+    std::regex re("\\[[\\s\\S]+?\\]");
+    return std::regex_replace(commented_nexus_text, re, std::string());
     }
 
 inline std::string stripTreeName(const std::string & name_equals_tree)
     {
     std::string tree_description;
-    boost::smatch what;
-    boost::regex pattern("^.+?=\\s*(.+)");
-    bool regex_ok = boost::regex_search(name_equals_tree, what, pattern);
+    std::smatch what;
+    //std::regex pattern("^.+?=\\s*(.+)");
+    std::regex pattern("[\\s\\S]+?=\\s*([\\s\\S]+)", std::regex_constants::ECMAScript);
+    bool regex_ok = std::regex_search(name_equals_tree, what, pattern);
     if (regex_ok)
         {
         // what[0] contains the whole string

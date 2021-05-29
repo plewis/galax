@@ -45,7 +45,7 @@ class Galax
         bool                                replaceTaxonNames(const std::string & newick_with_taxon_names, std::string & newick_with_taxon_numbers);
         void                                parseTranslate(const std::string & file_contents);
         void                                getPhyloBayesNewicks(std::vector< std::string > & tree_descriptions, const std::string & file_contents, unsigned skip);
-        std::string                         standardizeNodeNumber(boost::smatch const & what);
+        std::string                         standardizeNodeNumber(std::smatch const & what);
         std::string                         standardizeTreeDescription(std::string & newick);
         void                                getNewicks(std::vector< std::string > & tree_descriptions, const std::string & file_contents, unsigned skip);
         std::vector<std::string>            getTreeFileList(std::string listfname);

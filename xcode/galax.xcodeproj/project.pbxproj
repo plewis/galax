@@ -7,10 +7,11 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		D10C60AA1C1CBD7F008E2441 /* libboost_filesystem.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D10C60A61C1CBD7F008E2441 /* libboost_filesystem.dylib */; };
-		D10C60AB1C1CBD7F008E2441 /* libboost_program_options.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D10C60A71C1CBD7F008E2441 /* libboost_program_options.dylib */; };
-		D10C60AC1C1CBD7F008E2441 /* libboost_regex.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D10C60A81C1CBD7F008E2441 /* libboost_regex.dylib */; };
-		D10C60AD1C1CBD7F008E2441 /* libboost_system.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D10C60A91C1CBD7F008E2441 /* libboost_system.dylib */; };
+		D18C0DC82518E0950095B172 /* libboost_filesystem.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D18C0DC32518E0950095B172 /* libboost_filesystem.a */; };
+		D18C0DCA2518E0950095B172 /* libncl.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D18C0DC52518E0950095B172 /* libncl.a */; };
+		D18C0DCB2518E0950095B172 /* libboost_system.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D18C0DC62518E0950095B172 /* libboost_system.a */; };
+		D18C0DCC2518E0950095B172 /* libboost_program_options.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D18C0DC72518E0950095B172 /* libboost_program_options.a */; };
+		D18C0DD52518E2C80095B172 /* libhmsbeagle.1.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D18C0DCD2518E0B70095B172 /* libhmsbeagle.1.dylib */; };
 		D1D47CCF1A03222700D07933 /* galax.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D1D47CC61A03222700D07933 /* galax.cpp */; };
 		D1D47CD01A03222700D07933 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D1D47CC91A03222700D07933 /* main.cpp */; };
 /* End PBXBuildFile section */
@@ -28,11 +29,13 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		D10C60A61C1CBD7F008E2441 /* libboost_filesystem.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libboost_filesystem.dylib; path = ../../../libraries/boost_1_59_0/stage/lib/libboost_filesystem.dylib; sourceTree = "<group>"; };
-		D10C60A71C1CBD7F008E2441 /* libboost_program_options.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libboost_program_options.dylib; path = ../../../libraries/boost_1_59_0/stage/lib/libboost_program_options.dylib; sourceTree = "<group>"; };
-		D10C60A81C1CBD7F008E2441 /* libboost_regex.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libboost_regex.dylib; path = ../../../libraries/boost_1_59_0/stage/lib/libboost_regex.dylib; sourceTree = "<group>"; };
-		D10C60A91C1CBD7F008E2441 /* libboost_system.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libboost_system.dylib; path = ../../../libraries/boost_1_59_0/stage/lib/libboost_system.dylib; sourceTree = "<group>"; };
 		D16D4ED51B519F0A00155165 /* galaxdata.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; name = galaxdata.hpp; path = ../src/galaxdata.hpp; sourceTree = "<group>"; };
+		D18C0DC32518E0950095B172 /* libboost_filesystem.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libboost_filesystem.a; path = ../../../../lib/static/libboost_filesystem.a; sourceTree = "<group>"; };
+		D18C0DC42518E0950095B172 /* libboost_regex.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libboost_regex.a; path = ../../../../lib/static/libboost_regex.a; sourceTree = "<group>"; };
+		D18C0DC52518E0950095B172 /* libncl.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libncl.a; path = ../../../../lib/static/libncl.a; sourceTree = "<group>"; };
+		D18C0DC62518E0950095B172 /* libboost_system.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libboost_system.a; path = ../../../../lib/static/libboost_system.a; sourceTree = "<group>"; };
+		D18C0DC72518E0950095B172 /* libboost_program_options.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libboost_program_options.a; path = ../../../../lib/static/libboost_program_options.a; sourceTree = "<group>"; };
+		D18C0DCD2518E0B70095B172 /* libhmsbeagle.1.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libhmsbeagle.1.dylib; path = ../../../../lib/libhmsbeagle.1.dylib; sourceTree = "<group>"; };
 		D1CE62111A59E9BA00A4A50E /* galaxinfo.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; name = galaxinfo.hpp; path = ../src/galaxinfo.hpp; sourceTree = "<group>"; };
 		D1D47CBB1A0321E500D07933 /* galax */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = galax; sourceTree = BUILT_PRODUCTS_DIR; };
 		D1D47CC61A03222700D07933 /* galax.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = galax.cpp; path = ../src/galax.cpp; sourceTree = "<group>"; };
@@ -51,25 +54,36 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				D10C60AA1C1CBD7F008E2441 /* libboost_filesystem.dylib in Frameworks */,
-				D10C60AB1C1CBD7F008E2441 /* libboost_program_options.dylib in Frameworks */,
-				D10C60AC1C1CBD7F008E2441 /* libboost_regex.dylib in Frameworks */,
-				D10C60AD1C1CBD7F008E2441 /* libboost_system.dylib in Frameworks */,
+				D18C0DD52518E2C80095B172 /* libhmsbeagle.1.dylib in Frameworks */,
+				D18C0DC82518E0950095B172 /* libboost_filesystem.a in Frameworks */,
+				D18C0DCA2518E0950095B172 /* libncl.a in Frameworks */,
+				D18C0DCB2518E0950095B172 /* libboost_system.a in Frameworks */,
+				D18C0DCC2518E0950095B172 /* libboost_program_options.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		D18C0DC22518E0950095B172 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				D18C0DCD2518E0B70095B172 /* libhmsbeagle.1.dylib */,
+				D18C0DC32518E0950095B172 /* libboost_filesystem.a */,
+				D18C0DC72518E0950095B172 /* libboost_program_options.a */,
+				D18C0DC42518E0950095B172 /* libboost_regex.a */,
+				D18C0DC62518E0950095B172 /* libboost_system.a */,
+				D18C0DC52518E0950095B172 /* libncl.a */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		D1D47CB21A0321E500D07933 = {
 			isa = PBXGroup;
 			children = (
-				D10C60A61C1CBD7F008E2441 /* libboost_filesystem.dylib */,
-				D10C60A71C1CBD7F008E2441 /* libboost_program_options.dylib */,
-				D10C60A81C1CBD7F008E2441 /* libboost_regex.dylib */,
-				D10C60A91C1CBD7F008E2441 /* libboost_system.dylib */,
 				D1D47CC51A03220E00D07933 /* src */,
 				D1D47CBC1A0321E500D07933 /* Products */,
+				D18C0DC22518E0950095B172 /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -138,6 +152,7 @@
 			developmentRegion = English;
 			hasScannedForEncodings = 0;
 			knownRegions = (
+				English,
 				en,
 			);
 			mainGroup = D1D47CB21A0321E500D07933;
@@ -196,7 +211,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 10.9;
+				MACOSX_DEPLOYMENT_TARGET = 10.14;
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				OTHER_LDFLAGS = "";
@@ -232,7 +247,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 10.9;
+				MACOSX_DEPLOYMENT_TARGET = 10.14;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				OTHER_LDFLAGS = "";
 				SDKROOT = macosx;
@@ -242,7 +257,7 @@
 		D1D47CC31A0321E500D07933 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CLANG_CXX_LANGUAGE_STANDARD = "compiler-default";
+				CLANG_CXX_LANGUAGE_STANDARD = "c++0x";
 				GCC_C_LANGUAGE_STANDARD = "compiler-default";
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
@@ -251,7 +266,8 @@
 				);
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
-					"$(BOOST_ROOT)/stage/lib",
+					$HOME/lib,
+					$HOME/lib/static,
 				);
 				OTHER_LDFLAGS = "";
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -262,7 +278,7 @@
 		D1D47CC41A0321E500D07933 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CLANG_CXX_LANGUAGE_STANDARD = "compiler-default";
+				CLANG_CXX_LANGUAGE_STANDARD = "c++0x";
 				GCC_C_LANGUAGE_STANDARD = "compiler-default";
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
@@ -271,7 +287,8 @@
 				);
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
-					"$(BOOST_ROOT)/stage/lib",
+					$HOME/lib,
+					$HOME/lib/static,
 				);
 				OTHER_LDFLAGS = "";
 				PRODUCT_NAME = "$(TARGET_NAME)";

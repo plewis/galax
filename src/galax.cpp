@@ -10,6 +10,7 @@
 #include <limits>
 #include <algorithm>
 #include <sstream>
+#include <regex>
 #include <boost/bind.hpp>
 #include <boost/format.hpp>
 #include <boost/lambda/lambda.hpp>
@@ -109,9 +110,10 @@ std::vector<std::string> Galax::getTreeFileList(std::string listfname)
 
 bool Galax::isNexusFile(const std::string & file_contents)
     {
-    boost::regex pattern("#nexus|#Nexus|#NEXUS");
-    boost::smatch what;
-    bool is_nexus_file = (bool)boost::regex_match(file_contents.substr(0,6), what, pattern);
+    std::regex pattern("#nexus|#Nexus|#NEXUS");
+    std::smatch what;
+    std::string first_six_letters = file_contents.substr(0,6);
+    bool is_nexus_file = (bool)std::regex_match(first_six_letters, what, pattern);
     return is_nexus_file;
     }
 
@@ -142,13 +144,13 @@ unsigned Galax::taxonNumberFromName(const std::string taxon_name, bool add_if_mi
 bool Galax::replaceTaxonNames(const std::string & newick_with_taxon_names, std::string & newick_with_taxon_numbers)
     {
     newick_with_taxon_numbers.clear();
-    boost::regex taxonexpr("[(,]+\\s*([^,):]+)");
-    boost::sregex_iterator m1(newick_with_taxon_names.begin(), newick_with_taxon_names.end(), taxonexpr);
-    boost::sregex_iterator m2;
-    boost::sregex_iterator last;
+    std::regex taxonexpr("[(,]+\\s*([^,):]+)");
+    std::sregex_iterator m1(newick_with_taxon_names.begin(), newick_with_taxon_names.end(), taxonexpr);
+    std::sregex_iterator m2;
+    std::sregex_iterator last;
     for (; m1 != m2; ++m1)
         {
-        boost::smatch what = *m1;
+        std::smatch what = *m1;
         newick_with_taxon_numbers.append(what.prefix());
         newick_with_taxon_numbers.append(what[0].first, what[1].first) ;
         unsigned n = taxonNumberFromName(what[1].str(), true);
@@ -164,7 +166,7 @@ bool Galax::replaceTaxonNames(const std::string & newick_with_taxon_names, std::
             }
         last = m1;
         }
-    boost::smatch what = *last;
+    std::smatch what = *last;
     newick_with_taxon_numbers.append(what.suffix());
     return true;
     }
@@ -180,13 +182,18 @@ void Galax::parseTranslate(const std::string & file_contents)
 
     // First, separate out the contents of the translate statement from the rest of the tree file
     std::string translate_contents;
-    boost::regex pattern("[Tt]ranslate(.+?);");
-    boost::smatch what;
-    bool regex_ok = boost::regex_search(file_contents, what, pattern);
+    std::regex pattern("[Tt]ranslate([\\S\\s]+?;)");
+    std::smatch what;
+    bool regex_ok = std::regex_search(file_contents, what, pattern);
     if (regex_ok)
         {
         // what[0] contains the whole string
         // what[1] contains the translate statement contents
+        
+        //std::ofstream doof("doof_translate_contents.txt");
+        //doof << what[1] << std::endl;
+        //doof.close();
+                
         // Construct a string using characters in contents from what[1].first to what[1].second
         translate_contents.insert(translate_contents.begin(), what[1].first, what[1].second);
         }
@@ -196,12 +203,21 @@ void Galax::parseTranslate(const std::string & file_contents)
         }
 
     // Now create the map by iterating through each element of the translate statement
-    boost::regex re("(\\d+)\\s+'?(.+?)'?,?$");
-    boost::sregex_iterator m1(translate_contents.begin(), translate_contents.end(), re);
-    boost::sregex_iterator m2;
+    //std::regex re("(\\d+)\\s+'?(.+?)'?,?$");
+    std::regex re("(\\d+)\\s+'?([\\s\\S]+?)'?\\s*[,;]");
+    std::sregex_iterator m1(translate_contents.begin(), translate_contents.end(), re);
+    std::sregex_iterator m2;
     for (; m1 != m2; ++m1)
         {
-        const boost::match_results<std::string::const_iterator>& what = *m1;
+        const std::match_results<std::string::const_iterator>& what = *m1;
+        
+        //std::ofstream doof("doof_translate_element.txt");
+        //doof << "taxon index = " << what[1] << std::endl;
+        //doof << "taxon name  = " << what[2] << std::endl;
+        //doof.close();
+        //std::cout << "taxon index = " << what[1] << std::endl;
+        //std::cout << "taxon name  = " << what[2] << std::endl;
+        
         unsigned taxon_index = 0;
         try
             {
@@ -246,13 +262,14 @@ void Galax::parseTranslate(const std::string & file_contents)
 void Galax::getPhyloBayesNewicks(std::vector< std::string > & tree_descriptions, const std::string & file_contents, unsigned skip)
     {
     tree_descriptions.clear();
-    boost::regex re("^(.+?);");
-    boost::sregex_iterator m1(file_contents.begin(), file_contents.end(), re);
-    boost::sregex_iterator m2;  // empty iterator used only to detect when we are done
+    //std::regex re("^(.+?);");
+    std::regex re("([\\s\\S]+?);", std::regex_constants::ECMAScript);
+    std::sregex_iterator m1(file_contents.begin(), file_contents.end(), re);
+    std::sregex_iterator m2;  // empty iterator used only to detect when we are done
     unsigned n = 0;
     for (; m1 != m2; ++m1)
         {
-        const boost::match_results<std::string::const_iterator>& what = *m1;
+        const std::match_results<std::string::const_iterator>& what = *m1;
         if (n >= skip)
             {
             std::string newick_only;
@@ -264,7 +281,7 @@ void Galax::getPhyloBayesNewicks(std::vector< std::string > & tree_descriptions,
         }
     }
 
-std::string Galax::standardizeNodeNumber(boost::smatch const & what)
+std::string Galax::standardizeNodeNumber(std::smatch const & what)
     {
     int x = atoi(what[2].str().c_str());
 
@@ -272,6 +289,7 @@ std::string Galax::standardizeNodeNumber(boost::smatch const & what)
     // which are not necessarily the same as those used in the translate command that
     // was in the tree file
     std::string & stored_taxon_name = _translate[x];
+    assert(stored_taxon_name != "");
     unsigned stored_taxon_index = _taxon_map[stored_taxon_name];
     std::string s = boost::str(boost::format("%s%d") % what[1] % stored_taxon_index);
     return s;
@@ -279,31 +297,83 @@ std::string Galax::standardizeNodeNumber(boost::smatch const & what)
 
 std::string Galax::standardizeTreeDescription(std::string & newick_in)
     {
-    // Search for node numbers in newick_in and replace them with standard node numbers stored in _taxon_map
-    boost::regex re("([(,])(\\d+)");
-    boost::function<std::string (boost::smatch const &)> function = boost::bind(&Galax::standardizeNodeNumber, this, _1);
-    std::string newick_out = boost::regex_replace(newick_in, re, function);
-    return newick_out;
+    std::string stdnewick;
+    std::regex re("([(,])(\\d+)");
+    std::sregex_iterator m1(newick_in.begin(), newick_in.end(), re);
+    std::sregex_iterator m2;
+    std::sregex_iterator last;
+    for (; m1 != m2; ++m1)
+        {
+        std::smatch what = *m1;
+        
+        stdnewick.append(what.prefix());
+        stdnewick.append(standardizeNodeNumber(what));
+
+        //std::ofstream doof("doof_standardize.txt");
+        //doof << "what.prefix() = " << what.prefix()  << std::endl;
+        //doof << "what.suffix() = " << what.suffix()  << std::endl;
+        //doof << "what[0] = " << what[0] << std::endl;
+        //doof << "what[1] = " << what[1] << std::endl;
+        //doof << "what[2] = " << what[2] << std::endl;
+        //doof << "standardizeNodeNumber(what) = " << standardizeNodeNumber(what) << std::endl;
+        //doof << "stdnewick = " << stdnewick << std::endl;
+        //doof.close();
+        
+        last = m1;
+        }
+    std::smatch what = *last;
+    stdnewick.append(what.suffix());
+    return stdnewick;
     }
+
+//std::string Galax::standardizeTreeDescription(std::string & newick_in)
+//    {
+//    // Search for node numbers in newick_in and replace them with standard node numbers stored in _taxon_map
+//    std::regex re("([(,])(\\d+)");
+//    boost::function<std::string (std::smatch const &)> function = boost::bind(&Galax::standardizeNodeNumber, this, _1);
+//    std::string newick_out = std::regex_replace(newick_in, re, function);
+//    return newick_out;
+//    }
 
 void Galax::getNewicks(std::vector< std::string > & tree_descriptions, const std::string & file_contents, unsigned skip)
     {
     // tree STATE_0 [&lnP=-4493.80476846934,posterior=-4493.80476846934] = [&R] (9:[&rate=0.49971158909783764]1851.4724462198697,((1:[&rate=0.5965730394621352]292.73199858783727,(10:[&rate=0.6588031360335018]30.21172743645451,5:[&rate=0.7098036299867017]30.21172743645451):[&rate=1.0146941544458208]262.52027115138276):[&rate=1.0649642758561977]510.452441519872,((8:[&rate=0.7554924641162211]145.1076605992074,(7:[&rate=0.7984750329147966]64.0435017480143,6:[&rate=0.8402528958963882]64.0435017480143):[&rate=1.1206854064651213]81.06415885119311):[&rate=1.1844450597679457]522.823827314411,((3:[&rate=0.8818808237868384]60.2962343089954,4:[&rate=0.9242396697890951]60.2962343089954):[&rate=1.260685743226102]12.793802911399744,2:[&rate=0.9681896872253556]73.09003722039515):[&rate=1.3582802932633053]594.8414506932232):[&rate=1.4999660689010508]135.25295219409088):[&rate=1.7907115550989796]1048.2880061121605);
     // tree STATE_0 [&lnP=-222468.46405040708,posterior=-222468.46405040708] = [&R] (((((((13:[&rate=0.41948130885774293]6.2959114346539975,((7:[&rate=0.4835763823640333]0.13550093579331035,1:[&rate=0.5209684767630073]0.13550093579331035):[&rate=0.9635652545109973]0.5551042325454463,15:[&rate=0.5492827727849298]0.6906051683387566):[&rate=0.9755113666282312]5.605306266315241):[&rate=0.9876472559631831]10.322795910985544,(17:[&rate=0.5728193948810578]5.685111439869553,2:[&rate=0.5933667775296758]5.685111439869553):[&rate=0.9999937594617617]10.93359590576999):[&rate=1.0125732516497858]5.142489242495607,(5:[&rate=0.6118563212473699]0.15949221153379095,28:[&rate=0.6288406629410516]0.15949221153379095):[&rate=1.0254099216508532]21.601704376601358):[&rate=1.038530094409559]116.24314628707417,(((29:[&rate=0.6446773336086477]0.762443175497069,8:[&rate=0.6596124676296977]0.762443175497069):[&rate=1.051962607302118]22.93607986063065,(23:[&rate=0.6738236879118028]0.5047866135985948,21:[&rate=0.6874440397483901]0.5047866135985948):[&rate=1.0657392562843637]23.193736422529124):[&rate=1.0798953297143943]16.280424093309122,20:[&rate=0.7005762553101323]39.97894712943684):[&rate=1.0944702533868567]98.02539574577247):[&rate=1.1095083777014945]20.87666238489902,18:[&rate=0.713301711000359]158.88100526010834):[&rate=1.1250599481079797]25.369142391234874,(((((6:[&rate=0.7256862972167103]4.157046671443346,27:[&rate=0.7377844041897827]4.157046671443346):[&rate=1.1411823142956972]0.4216380394703174,31:[&rate=0.749641711811296]4.578684710913663):[&rate=1.157941453976706]2.7888871791074665,((14:[&rate=0.7612971942888511]0.4820008033421106,26:[&rate=0.7727845943689399]0.4820008033421106):[&rate=1.175413916572047]2.1006906770419045,33:[&rate=0.7841335302910268]2.582691480384015):[&rate=1.1936893354723344]4.784880409637115):[&rate=1.2128737226386077]28.320425658481167,(4:[&rate=0.7953703429930343]9.047384492551547,19:[&rate=0.8065187562334204]9.047384492551547):[&rate=1.2330938592149618]26.640613055950748):[&rate=1.254503252991522]144.44188595962413,(34:[&rate=0.8176003998695023]49.84530458500085,(((35:[&rate=0.8286352317599452]4.64783851774415,9:[&rate=0.8396418838264186]4.64783851774415):[&rate=1.2772903877797566]17.7189245645138,(12:[&rate=0.8506379510097704]9.214275524579357,(3:[&rate=0.8616402371306506]6.8925402326469944,32:[&rate=0.8726649683413712]6.8925402326469944):[&rate=1.301690414163583]2.321735291932362):[&rate=1.3280021656518173]13.152487557678594):[&rate=1.356613709910537]7.407288154720803,((30:[&rate=0.8837279825004343]3.4163490119965814,25:[&rate=0.8948449011281925]3.4163490119965814):[&rate=1.3880421571600987]13.604316647910641,24:[&rate=0.9060312894219462]17.020665659907223):[&rate=1.422998494768541]12.75338557707153):[&rate=1.4624990961768445]20.071253348022093):[&rate=1.5080711470564487]130.2845789231256):[&rate=1.5621665830644125]4.120264143216787):[&rate=1.6291050095698845]125.24494247082069,(16:[&rate=0.9173028089947355]35.446341908327426,((22:[&rate=0.9286753674700471]0.013463304338836088,11:[&rate=0.940165268760073]0.013463304338836088):[&rate=1.7176458014779916]7.67054782472139,10:[&rate=0.9517893784722757]7.6840111290602255):[&rate=1.8504611669408024]27.762330779267202):[&rate=2.133204264216236]274.04874821383646);
     // tree STATE_0 = ((((1:0.015159374158485823,6:0.015159374158485823):0.0064804882886747035,2:0.021639862447160527):0.104324463428508,5:0.12596432587566853):0.30645174794996116,(3:0.4084347373105321,4:0.4084347373105321):0.023981336515097595):0.0;
+    
     tree_descriptions.clear();
-    boost::regex re("^\\s*[Tt]ree(.+?);");
-    boost::sregex_iterator m1(file_contents.begin(), file_contents.end(), re);
-    boost::sregex_iterator m2;  // empty iterator used only to detect when we are done
+    //std::regex re("^\\s*[Tt]ree([\\s\\S]+?);");
+    std::regex re("[Uu]*[Tt]ree\\s([\\s\\S]+?);", std::regex_constants::ECMAScript);
+    std::sregex_iterator m1(file_contents.begin(), file_contents.end(), re);
+    std::sregex_iterator m2;  // empty iterator used only to detect when we are done
     unsigned n = 0;
     for (; m1 != m2; ++m1)
         {
-        const boost::match_results<std::string::const_iterator>& what = *m1;
+        const std::match_results<std::string::const_iterator>& what = *m1;
         if (n >= skip)
             {
+            //std::ofstream doof("doof_tree_match.txt");
+            //doof << what[1].str() << std::endl;
+            //doof.close();
+            
             std::string stripped = stripComments( what[1].str() );
+
+            //doof.open("doof_stripped.txt");
+            //doof << stripped << std::endl;
+            //doof.close();
+            
             std::string newick_only = stripTreeName(stripped);
+
+            //doof.open("doof_newick_only.txt");
+            //doof << newick_only << std::endl;
+            //doof.close();
+            
             std::string std_newick = standardizeTreeDescription(newick_only);
+
+            //doof.open("doof_std_newick.txt");
+            //doof << std_newick << std::endl;
+            //doof.close();
+            
             tree_descriptions.push_back(std_newick);
             }
         n += 1;
@@ -318,6 +388,10 @@ void Galax::processTrees(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap
         {
         try
             {
+            //std::ofstream doof("doof_newick.txt");
+            //doof << *sit << std::endl;
+            //doof.close();
+            
             tm->buildFromNewick(*sit, (_rooted ? 0 : _outgroup));
             tm->addToCCDMap(ccdmap, _treeCCD, _treeMap, _show_details, subset_index, num_subsets);
             }
@@ -796,6 +870,9 @@ void Galax::run(std::string treefname, std::string listfname, unsigned skip, boo
             std::string msg = boost::str(boost::format("Read %d trees from tree file %s\n") % _newicks.size() % treefname);
             std::cout << msg;
             _outf << msg;
+            
+            if (_newicks.size() == 0)
+                throw XGalax("Quitting because no trees were found to process.");
 
             GalaxInfoVector majrule_clade_info;
             std::vector<Split> majrule_splits;
@@ -879,7 +956,7 @@ void Galax::run(std::string treefname, std::string listfname, unsigned skip, boo
         }
 	catch(XGalax x)
 		{
-		std::cerr << "ERROR: " << x.what() << std::endl;
+		std::cerr << x.what() << std::endl;
 		}
     }
 

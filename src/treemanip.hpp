@@ -630,9 +630,10 @@ inline void TreeManip<T>::addToCCDMap(CCDMapType & ccdmap, SubsetTreeSetType & t
 template <class T>
 inline unsigned TreeManip<T>::countNewickLeaves(const std::string newick)
     {
-    boost::regex taxonexpr("[(,]\\s*(\\d+|\\S+?|['].+?['])\\s*(?=[,):])");
-    boost::sregex_iterator m1(newick.begin(), newick.end(), taxonexpr);
-    boost::sregex_iterator m2;
+    //std::regex taxonexpr("[(,]\\s*(\\d+|\\S+?|['].+?['])\\s*(?=[,):])");
+    std::regex taxonexpr("[(,]\\s*(\\d+|\\S+?|['][\\s\\S]+?['])\\s*(?=[,):])");
+    std::sregex_iterator m1(newick.begin(), newick.end(), taxonexpr);
+    std::sregex_iterator m2;
     return (unsigned)std::distance(m1, m2);
     }
 
