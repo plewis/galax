@@ -12,7 +12,7 @@
 #include <streambuf>
 #include <boost/program_options.hpp>
 #include <boost/format.hpp>
-#include <boost/regex.hpp>
+//#include <boost/regex.hpp>
 #include "galaxinfo.hpp"
 #include "galax.hpp"
 
@@ -21,7 +21,7 @@ using namespace galax;
 unsigned GalaxInfo::_sortby_index = 0;
 std::string program_name = "galax";
 unsigned major_version = 1;
-unsigned minor_version = 0;
+unsigned minor_version = 1;
 unsigned bugfix_version = 0;
 std::string tree_file_name = "";
 std::string list_file_name = "";
