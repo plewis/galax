@@ -1,0 +1,16 @@
+project('galax', 'cpp',
+	default_options : ['cpp_std=c++11','buildtype=release'],
+	version : '1.0')
+cpp = meson.get_compiler('cpp')
+
+# These lines specify the locations of the NCL, Boost, and BeagleLib compiled libraries
+lib_regex = cpp.find_library('boost_regex', dirs: ['/home/pol02003/lib/static'], required: true)
+lib_program_options = cpp.find_library('boost_program_options', dirs: ['/home/pol02003/lib/static'], required: true)
+lib_ncl = cpp.find_library('ncl', dirs: ['/home/pol02003/lib/static'], required: true)
+
+# These lines specify the locations of header files for the NCL, Boost, BeagleLib, and Eigen library
+incl_ncl = include_directories('/home/pol02003/include')
+incl_boost = include_directories('/home/pol02003/boost_1_72_0')
+
+# This line creates the executable file
+executable('galax', 'src/main.cpp', 'src/galax.cpp', install: true, install_dir: '.', dependencies: [lib_ncl,lib_program_options,lib_regex], include_directories: [incl_ncl,incl_boost])

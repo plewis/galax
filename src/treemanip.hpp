@@ -971,11 +971,12 @@ template <class T>
 inline void TreeManip<T>::buildFromSplitVector(const std::vector<Split> & split_vect, unsigned root_at)
     {
     bool rooted = (root_at == 0);
-    if (split_vect.size() == 0)
+    if (split_vect.size() == 0) {
         throw XGalax("Tried to build tree from zero-length split vector");
+    }
 
-	try
-		{
+    try
+        {
         // Start with clean slate in case _tree already exists
         _tree.reset(new Tree<T>());
         _tree->_is_rooted = rooted;
