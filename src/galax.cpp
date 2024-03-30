@@ -430,13 +430,13 @@ void Galax::processTrees(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap
     double max_entropy = log(n);
     double raw_entropy = log(n) - xlogx/n;
     double raw_Ipct = 100.0*(max_entropy - raw_entropy)/max_entropy;
-    std::cout << std::endl;
-    std::cout << "Subset " << subset_index << std::endl;
-    std::cout << boost::str(boost::format("  %12.5f raw entropy\n") % raw_entropy);
-    std::cout << boost::str(boost::format("  %12d sample size\n") % (unsigned)n);
-    std::cout << boost::str(boost::format("  %12.5f maximum entropy given sample size\n") % max_entropy);
-    std::cout << boost::str(boost::format("  %12.5f percent information given sample size\n") % raw_Ipct);
-    std::cout << std::endl;
+    _outf << std::endl;
+    _outf << "Subset " << subset_index << std::endl;
+    _outf << boost::str(boost::format("  %12.5f raw entropy\n") % raw_entropy);
+    _outf << boost::str(boost::format("  %12d sample size\n") % (unsigned)n);
+    _outf << boost::str(boost::format("  %12.5f maximum entropy given sample size\n") % max_entropy);
+    _outf << boost::str(boost::format("  %12.5f percent information given sample size\n") % raw_Ipct);
+    _outf << std::endl;
 #endif
 
     _end_time = getCurrentTime();
