@@ -11,7 +11,6 @@
 		D18C0DCA2518E0950095B172 /* libncl.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D18C0DC52518E0950095B172 /* libncl.a */; };
 		D18C0DCB2518E0950095B172 /* libboost_system.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D18C0DC62518E0950095B172 /* libboost_system.a */; };
 		D18C0DCC2518E0950095B172 /* libboost_program_options.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D18C0DC72518E0950095B172 /* libboost_program_options.a */; };
-		D18C0DD52518E2C80095B172 /* libhmsbeagle.1.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D18C0DCD2518E0B70095B172 /* libhmsbeagle.1.dylib */; };
 		D1D47CCF1A03222700D07933 /* galax.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D1D47CC61A03222700D07933 /* galax.cpp */; };
 		D1D47CD01A03222700D07933 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D1D47CC91A03222700D07933 /* main.cpp */; };
 /* End PBXBuildFile section */
@@ -29,6 +28,10 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		D1196D942BB769C300DEBB78 /* conditionals.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; name = conditionals.hpp; path = ../src/conditionals.hpp; sourceTree = "<group>"; };
+		D129331A2664255400C6DD32 /* libhmsbeagle.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libhmsbeagle.a; path = ../../../../lib/static/libhmsbeagle.a; sourceTree = "<group>"; };
+		D129331B2664255400C6DD32 /* libhmsbeagle-cpu-sse.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "libhmsbeagle-cpu-sse.a"; path = "../../../../lib/static/libhmsbeagle-cpu-sse.a"; sourceTree = "<group>"; };
+		D129331C2664255400C6DD32 /* libhmsbeagle-cpu.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "libhmsbeagle-cpu.a"; path = "../../../../lib/static/libhmsbeagle-cpu.a"; sourceTree = "<group>"; };
 		D16D4ED51B519F0A00155165 /* galaxdata.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; name = galaxdata.hpp; path = ../src/galaxdata.hpp; sourceTree = "<group>"; };
 		D18C0DC32518E0950095B172 /* libboost_filesystem.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libboost_filesystem.a; path = ../../../../lib/static/libboost_filesystem.a; sourceTree = "<group>"; };
 		D18C0DC42518E0950095B172 /* libboost_regex.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libboost_regex.a; path = ../../../../lib/static/libboost_regex.a; sourceTree = "<group>"; };
@@ -54,7 +57,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				D18C0DD52518E2C80095B172 /* libhmsbeagle.1.dylib in Frameworks */,
 				D18C0DC82518E0950095B172 /* libboost_filesystem.a in Frameworks */,
 				D18C0DCA2518E0950095B172 /* libncl.a in Frameworks */,
 				D18C0DCB2518E0950095B172 /* libboost_system.a in Frameworks */,
@@ -68,6 +70,9 @@
 		D18C0DC22518E0950095B172 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				D129331B2664255400C6DD32 /* libhmsbeagle-cpu-sse.a */,
+				D129331C2664255400C6DD32 /* libhmsbeagle-cpu.a */,
+				D129331A2664255400C6DD32 /* libhmsbeagle.a */,
 				D18C0DCD2518E0B70095B172 /* libhmsbeagle.1.dylib */,
 				D18C0DC32518E0950095B172 /* libboost_filesystem.a */,
 				D18C0DC72518E0950095B172 /* libboost_program_options.a */,
@@ -98,6 +103,7 @@
 		D1D47CC51A03220E00D07933 /* src */ = {
 			isa = PBXGroup;
 			children = (
+				D1196D942BB769C300DEBB78 /* conditionals.hpp */,
 				D16D4ED51B519F0A00155165 /* galaxdata.hpp */,
 				D1CE62111A59E9BA00A4A50E /* galaxinfo.hpp */,
 				D1D47CC81A03222700D07933 /* galaxutil.hpp */,
@@ -197,6 +203,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				EXCLUDED_ARCHS = arm64;
 				GCC_C_LANGUAGE_STANDARD = gnu99;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_OPTIMIZATION_LEVEL = 0;
@@ -211,6 +218,14 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
+				HEADER_SEARCH_PATHS = (
+					"$(BOOST_ROOT)",
+					"$(NCL_ROOT)",
+				);
+				LIBRARY_SEARCH_PATHS = (
+					"$(HOME)/lib",
+					"$(HOME)/lib/static",
+				);
 				MACOSX_DEPLOYMENT_TARGET = 10.14;
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -240,6 +255,7 @@
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				EXCLUDED_ARCHS = arm64;
 				GCC_C_LANGUAGE_STANDARD = gnu99;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
@@ -247,6 +263,14 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
+				HEADER_SEARCH_PATHS = (
+					"$(BOOST_ROOT)",
+					"$(NCL_ROOT)",
+				);
+				LIBRARY_SEARCH_PATHS = (
+					"$(HOME)/lib",
+					"$(HOME)/lib/static",
+				);
 				MACOSX_DEPLOYMENT_TARGET = 10.14;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				OTHER_LDFLAGS = "";
@@ -259,16 +283,6 @@
 			buildSettings = {
 				CLANG_CXX_LANGUAGE_STANDARD = "c++0x";
 				GCC_C_LANGUAGE_STANDARD = "compiler-default";
-				HEADER_SEARCH_PATHS = (
-					"$(inherited)",
-					/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include,
-					"$(BOOST_ROOT)",
-				);
-				LIBRARY_SEARCH_PATHS = (
-					"$(inherited)",
-					$HOME/lib,
-					$HOME/lib/static,
-				);
 				OTHER_LDFLAGS = "";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = macosx;
@@ -280,16 +294,6 @@
 			buildSettings = {
 				CLANG_CXX_LANGUAGE_STANDARD = "c++0x";
 				GCC_C_LANGUAGE_STANDARD = "compiler-default";
-				HEADER_SEARCH_PATHS = (
-					"$(inherited)",
-					/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include,
-					"$(BOOST_ROOT)",
-				);
-				LIBRARY_SEARCH_PATHS = (
-					"$(inherited)",
-					$HOME/lib,
-					$HOME/lib/static,
-				);
 				OTHER_LDFLAGS = "";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = macosx;

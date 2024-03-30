@@ -20,6 +20,7 @@
 #include <map>
 #include <numeric>      // accumulate
 #include <stdlib.h>     // atoi
+#include "conditionals.hpp"
 #include "split.hpp"
 #include "node.hpp"
 #include "tree.hpp"
@@ -63,6 +64,10 @@ class TreeManip
         void                                            buildFromSplitVector(const std::vector<Split> & splits, unsigned root_at);
         void                                            buildStarTree(unsigned nleaves, unsigned root_at);
 		std::string                                     makeNewick(unsigned ndecimals, bool edge_support) const;
+
+#if defined(POLNEW)
+        void                                            calcTreeID(std::set<Split> & tree_id) const;
+#endif
 
         void                                            addToCCDMap(CCDMapType & ccdmap, SubsetTreeSetType & treeCCD, SubsetTreeMapType & treeMap, bool update_treemap, unsigned subset_index, unsigned num_subsets);
         void                                            addToProfile(TimeVector & profile_times, WeightVector & profile_weights, const CladeInfoMap & clade_map);
@@ -567,6 +572,21 @@ inline void TreeManip<T>::addToProfile(TimeVector & profile_times, WeightVector 
             }   // if (nd->_left_child)
         }   // BOOST_FOREACH
     }
+
+#if defined(POLNEW)
+template <class T>
+inline void TreeManip<T>::calcTreeID(std::set<Split> & tree_id) const {
+    // tree_id is a set of splits, one from each internal node
+    tree_id.clear();
+    
+    BOOST_FOREACH(T * nd, _tree->_preorder) {
+        if (nd->_left_child) {
+            // internal node
+            tree_id.insert(nd->_split);
+        }
+    }
+}
+#endif
 
 template <class T>
 inline void TreeManip<T>::addToCCDMap(CCDMapType & ccdmap, SubsetTreeSetType & treeCCD, SubsetTreeMapType & treeMap, bool update_treemap, unsigned subset_index, unsigned num_subsets)

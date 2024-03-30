@@ -15,6 +15,7 @@
 #include <boost/format.hpp>
 #include <boost/lambda/lambda.hpp>
 #include <boost/algorithm/string/join.hpp>
+#include "conditionals.hpp"
 #include "galax.hpp"
 #include "galaxutil.hpp"
 #include "galaxinfo.hpp"
@@ -384,6 +385,12 @@ void Galax::processTrees(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap
     {
     _start_time = getCurrentTime();
 
+#if defined(POLNEW)
+    // Create tree set for use in computing raw posterior entropy
+    std::set<Split> tree_id;
+    std::map<std::set<Split>, unsigned> topo_map;
+#endif
+
     for (std::vector< std::string >::const_iterator sit = _newicks.begin(); sit != _newicks.end(); ++sit)
         {
         try
@@ -393,6 +400,15 @@ void Galax::processTrees(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap
             //doof.close();
             
             tm->buildFromNewick(*sit, (_rooted ? 0 : _outgroup));
+#if defined(POLNEW)
+            tm->calcTreeID(tree_id);
+            if (topo_map.count(tree_id) > 0) {
+                topo_map[tree_id]++;
+            }
+            else {
+                topo_map[tree_id] = 1;
+            }
+#endif
             tm->addToCCDMap(ccdmap, _treeCCD, _treeMap, _show_details, subset_index, num_subsets);
             }
         catch(XGalax & x)
@@ -401,6 +417,27 @@ void Galax::processTrees(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap
             std::exit(1);
             }
         }
+
+#if defined(POLNEW)
+    // Calculate raw entropy for this subset
+    double xlogx = 0.0;
+    double n = 0.0;
+    for (auto & p : topo_map) {
+        double x = (double)p.second;
+        n += x;
+        xlogx += x*log(x);
+    }
+    double max_entropy = log(n);
+    double raw_entropy = log(n) - xlogx/n;
+    double raw_Ipct = 100.0*(max_entropy - raw_entropy)/max_entropy;
+    std::cout << std::endl;
+    std::cout << "Subset " << subset_index << std::endl;
+    std::cout << boost::str(boost::format("  %12.5f raw entropy\n") % raw_entropy);
+    std::cout << boost::str(boost::format("  %12d sample size\n") % (unsigned)n);
+    std::cout << boost::str(boost::format("  %12.5f maximum entropy given sample size\n") % max_entropy);
+    std::cout << boost::str(boost::format("  %12.5f percent information given sample size\n") % raw_Ipct);
+    std::cout << std::endl;
+#endif
 
     _end_time = getCurrentTime();
     _total_seconds += secondsElapsed(_start_time, _end_time);

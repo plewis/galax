@@ -53,7 +53,7 @@ void processCommandLineOptions(int argc, const char * argv[])
         ("maptorooted,e", boost::program_options::bool_switch()->default_value(false), "mapto tree file contains rooted trees (leave out this option to assume unrooted)")
         ;
     boost::program_options::store(boost::program_options::parse_command_line(argc, argv, desc), vm);
-#if 0
+#if 1
     try
         {
         const boost::program_options::parsed_options & parsed = boost::program_options::parse_config_file< char >("galax.conf", desc, true);  // 3rd. argument = allow unrecognized options

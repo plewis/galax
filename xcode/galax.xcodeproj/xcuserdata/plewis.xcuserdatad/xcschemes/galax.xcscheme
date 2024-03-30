@@ -45,7 +45,7 @@
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       launchStyle = "0"
       useCustomWorkingDirectory = "YES"
-      customWorkingDirectory = "/Users/plewis/Documents/software/galax/test/revbayes_treefile"
+      customWorkingDirectory = "/Users/plewis/Documents/software/galax/test/one-treefile"
       ignoresPersistentStateOnLaunch = "NO"
       debugDocumentVersioning = "YES"
       debugServiceExtension = "internal"
@@ -71,6 +71,14 @@
          </CommandLineArgument>
          <CommandLineArgument
             argument = "12s.GTR_G.trees.nex"
+            isEnabled = "NO">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "slow2.tre"
+            isEnabled = "YES">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "--rooted"
             isEnabled = "YES">
          </CommandLineArgument>
       </CommandLineArguments>

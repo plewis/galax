@@ -1,5 +1,17 @@
-Read 1 tree file name from tree file rooted.t
-Input trees assumed to be rooted
+Galax 1.0.0
+
+Options specified:
+   --treefile: rooted.t
+   --listfile: 
+       --skip: 0
+     --rooted: true
+    --details: false
+   --outgroup: 1
+    --outfile: rooted-output
+      --mapto: 
+--maptorooted: false
+
+Read 175 trees from tree file rooted.t
 
 Order of taxa in split representations:
            1  A
@@ -10,33 +22,21 @@ Order of taxa in split representations:
            6  F
            7  G
 
-Lindley Information
-  Number of taxa in ingroup: 7
-  Total prior entropy: 9.24908
-
-Clade ***----
-            treefile        trees           Hp            H       Hp - H            w            I         Ipct            D
-            rooted.t          175      1.09861      0.59827      0.50034      0.84000      0.42029      4.54410          ---
-
-Clade ****---
-            treefile        trees           Hp            H       Hp - H            w            I         Ipct            D
-            rooted.t          175      2.70805      0.00000      2.70805      0.16000      0.43329      4.68466          ---
-
-Clade ----***
-            treefile        trees           Hp            H       Hp - H            w            I         Ipct            D
-            rooted.t          175      1.09861      0.68291      0.41570      0.28000      0.11640      1.25847          ---
-
-Clade ---****
-            treefile        trees           Hp            H       Hp - H            w            I         Ipct            D
-            rooted.t          175      2.55111      0.41012      2.14099      0.84000      1.79843     19.44443          ---
-
-Clade *******
-            treefile        trees           Hp            H       Hp - H            w            I         Ipct            D
-            rooted.t          175      5.44242      0.43967      5.00275      1.00000      5.00275     54.08914          ---
-
 Totals
-            treefile            I         Ipct            D
-            rooted.t      7.77115     84.02081          ---
+
+Key to columns:
+  unique   = number of distinct tree topologies
+  coverage = Larget (2013. Syst. Biol. 62:501–511) estimated posterior coverage
+  H        = entropy of marginal prior tree topology distribution
+  H*       = entropy of marginal posterior tree topology distribution
+  I        = Lindley information (H - H*)
+  Ipct     = I expressed as percent of maximum (100*I/H)
+  D        = dissonance (merged H* - average H*)
+  Dpct     = D expressed as percent of maximum (100*D/(merged H*))
+
+treefile       unique     coverage            H           H*            I         Ipct            D         Dpct
+rooted.t            5      0.86286      9.24908      1.47793      7.77115     84.02081          ---          ---
+ average            5      0.86286      9.24908      1.47793      7.77115     84.02081          ---          ---
 
 Clades sorted by merged clade posterior (w) (only those >= 50% shown):
            w         Ipct            D clade
@@ -46,14 +46,3 @@ Clades sorted by merged clade posterior (w) (only those >= 50% shown):
      0.84000      0.00000      0.00000 -----**
      0.76000      0.00000      0.00000 -**----
      0.72000      0.00000      0.00000 ---**--
-
-Order of taxa in split representations:
-           1  A
-           2  B
-           3  C
-           4  D
-           5  E
-           6  F
-           7  G
-
-Required 0.009 total seconds
