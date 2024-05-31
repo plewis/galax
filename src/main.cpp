@@ -21,7 +21,7 @@ using namespace galax;
 unsigned GalaxInfo::_sortby_index = 0;
 std::string program_name = "galax";
 unsigned major_version = 1;
-unsigned minor_version = 1;
+unsigned minor_version = 2;
 unsigned bugfix_version = 0;
 std::string tree_file_name = "";
 std::string list_file_name = "";

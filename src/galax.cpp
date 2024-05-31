@@ -45,9 +45,13 @@ void Galax::storeTrees(std::string file_contents, unsigned skip, std::vector< st
         parseTranslate(file_contents);
         getNewicks(tree_descriptions, file_contents, skip);
         }
+    else if (isRevBayesFile(file_contents))
+        {
+        getNewicksRevBayes(tree_descriptions, file_contents, skip);
+        }
     else
         {
-        throw XGalax("Galax currently requires tree files to be in NEXUS format.");
+        throw XGalax("Galax currently requires tree files to be in either NEXUS format or RevBayes format.");
         //getPhyloBayesNewicks(tree_descriptions, file_contents, skip);
 
         //TODO: this is ugly - try to get rid of _reverse_translate by converting _translate to map(string, int) rather than map(int, string)
@@ -116,6 +120,22 @@ bool Galax::isNexusFile(const std::string & file_contents)
     std::string first_six_letters = file_contents.substr(0,6);
     bool is_nexus_file = (bool)std::regex_match(first_six_letters, what, pattern);
     return is_nexus_file;
+    }
+
+bool Galax::isRevBayesFile(const std::string & file_contents)
+    {
+    //  Iteration	Posterior	Likelihood	Prior	psi
+    //  0	-852.3526	-904.9879	52.6353	(...newick...)[&index=102];
+    //  1	-844.5589	-897.5716	53.01273	(...newick...)[&index=102];
+    //  ...
+    //  10000	-839.9447	-893.1031	53.15838	(...newick...)[&index=102];
+    bool is_revbayes_file = false;
+    std::regex re("Iteration\\s+Posterior\\s+Likelihood\\s+Prior\\s+psi", std::regex_constants::ECMAScript);
+    std::sregex_iterator m1(file_contents.begin(), file_contents.end(), re);
+    std::sregex_iterator m2;  // empty iterator used only to detect when we are done
+    if (m1 != m2)
+        is_revbayes_file = true;
+    return is_revbayes_file;
     }
 
 unsigned Galax::taxonNumberFromName(const std::string taxon_name, bool add_if_missing)
@@ -296,6 +316,52 @@ std::string Galax::standardizeNodeNumber(std::smatch const & what)
     return s;
     }
 
+std::string Galax::standardizeTreeDescriptionRevBayes(std::string & newick_in)
+    {
+    std::string stdnewick;
+    std::regex re("([(,])([^:(,]+)", std::regex_constants::ECMAScript);
+    std::sregex_iterator m1(newick_in.begin(), newick_in.end(), re);
+    std::sregex_iterator m2;
+    std::sregex_iterator last;
+    int last_node_number = 1;
+    bool create_taxon_map = (_taxon_map.size() == 0);
+    for (; m1 != m2; ++m1)
+        {
+        std::smatch what = *m1;
+        
+        // //temporary!
+        // std::cerr << "-------------" << std::endl;
+        // std::cerr << "prefix: " << what.prefix().str() << std::endl;
+        // for (auto & w : what) {
+        //     std::cerr << w.str() << std::endl;
+        // }
+        
+        std::string prefix = what.prefix().str();
+        std::string before = what[1].str();
+        std::string node_name = what[2].str();
+        int node_number = 0;
+        if (create_taxon_map) {
+            // Ensure that same node name does not appear twice
+            assert(_taxon_map.count(node_name) == 0);
+            _translate[last_node_number] = node_name;
+            _taxon_map[node_name] = last_node_number;
+            node_number = last_node_number++;
+        }
+        else {
+            node_number = _taxon_map.at(node_name);
+        }
+        
+        stdnewick.append(prefix);
+        stdnewick.append(before);
+        stdnewick.append(std::to_string(node_number));
+        
+        last = m1;
+        }
+    std::smatch what = *last;
+    stdnewick.append(what.suffix());
+    return stdnewick;
+    }
+
 std::string Galax::standardizeTreeDescription(std::string & newick_in)
     {
     std::string stdnewick;
@@ -374,6 +440,37 @@ void Galax::getNewicks(std::vector< std::string > & tree_descriptions, const std
             //doof.open("doof_std_newick.txt");
             //doof << std_newick << std::endl;
             //doof.close();
+            
+            tree_descriptions.push_back(std_newick);
+            }
+        n += 1;
+        }
+    }
+
+void Galax::getNewicksRevBayes(std::vector< std::string > & tree_descriptions, const std::string & file_contents, unsigned skip)
+    {
+    //  Iteration	Posterior	Likelihood	Prior	psi
+    //  0	-852.3526	-904.9879	52.6353	(...newick...)[&index=102];
+    //  1	-844.5589	-897.5716	53.01273	(...newick...)[&index=102];
+    //  ...
+    //  10000	-839.9447	-893.1031	53.15838	(...newick...)[&index=102];
+    tree_descriptions.clear();
+    std::regex re("\\d+\\s+[-.0-9]+\\s+[-.0-9]+\\s+[-.0-9]+\\s+(\\S+);", std::regex_constants::ECMAScript);
+    std::sregex_iterator m1(file_contents.begin(), file_contents.end(), re);
+    std::sregex_iterator m2;  // empty iterator used only to detect when we are done
+    unsigned n = 0;
+    for (; m1 != m2; ++m1)
+        {
+        const std::match_results<std::string::const_iterator>& what = *m1;
+        if (n >= skip)
+            {
+            //std::cerr << what[1].str() << std::endl;
+            
+            std::string newick_only = stripComments( what[1].str() );
+            //std::cerr << newick_only << std::endl;
+            
+            std::string std_newick = standardizeTreeDescriptionRevBayes(newick_only);
+            //std::cerr << std_newick << std::endl;
             
             tree_descriptions.push_back(std_newick);
             }

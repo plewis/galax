@@ -45,7 +45,7 @@
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       launchStyle = "0"
       useCustomWorkingDirectory = "YES"
-      customWorkingDirectory = "/Users/plewis/Documents/software/galax/test/one-treefile"
+      customWorkingDirectory = "/Users/plewis/Documents/projects/SMC4/test/snakes/info/aclone/output"
       ignoresPersistentStateOnLaunch = "NO"
       debugDocumentVersioning = "YES"
       debugServiceExtension = "internal"
@@ -62,23 +62,19 @@
       </BuildableProductRunnable>
       <CommandLineArguments>
          <CommandLineArgument
-            argument = "--treefile"
+            argument = "--listfile"
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "cox1.t"
-            isEnabled = "NO">
-         </CommandLineArgument>
-         <CommandLineArgument
-            argument = "12s.GTR_G.trees.nex"
-            isEnabled = "NO">
-         </CommandLineArgument>
-         <CommandLineArgument
-            argument = "slow2.tre"
+            argument = "listfile.txt"
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "--rooted"
+            argument = "--skip"
+            isEnabled = "YES">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "1"
             isEnabled = "YES">
          </CommandLineArgument>
       </CommandLineArguments>
@@ -118,7 +114,7 @@
             ActionType = "Xcode.IDEStandardExecutionActionsCore.ExecutionActionType.ShellScriptAction">
             <ActionContent
                title = "Run Script"
-               scriptText = "exec &gt; &quot;/tmp/xcode_run_script.log&quot; 2&gt;&amp;1&#10;cp &quot;$ARCHIVE_PRODUCTS_PATH/usr/local/bin/galax&quot; /Users/plewis/bin/galax1&#10;"
+               scriptText = "exec &gt; &quot;/tmp/xcode_run_script.log&quot; 2&gt;&amp;1&#10;cp &quot;$ARCHIVE_PRODUCTS_PATH/usr/local/bin/galax&quot; /Users/plewis/bin/galax3&#10;"
                shellToInvoke = "/bin/bash">
             </ActionContent>
          </ExecutionAction>

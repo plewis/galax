@@ -56,6 +56,7 @@ Running Galax as follows `galax --listfile treefilelist.txt` results in a majori
 ## Version history
 
 | Version  |    Released   | Description |
-|:-------: | :-----------: | :---------------------------------------------------- |
-|1.0       |  22-Dec-2014  | Estimates and partitions I across clades |
-|1.1       |   2-Jan-2015  | Added --listfile and partitioning of D across clades |
+|:-------: | :-----------: | :------------------------------------------------------- |
+|1.0       |  22-Dec-2014  | Estimates and partitions I across clades                 |
+|1.1       |   2-Jan-2015  | Added --listfile and partitioning of D across clades     |
+|1.2       |  30-May-2024  | Added raw entropy and ability to read RevBayes treefiles |
