@@ -45,7 +45,7 @@
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       launchStyle = "0"
       useCustomWorkingDirectory = "YES"
-      customWorkingDirectory = "/Users/plewis/Documents/projects/SMC4/test/snakes/info/aclone/output"
+      customWorkingDirectory = "/Users/plewis/Downloads"
       ignoresPersistentStateOnLaunch = "NO"
       debugDocumentVersioning = "YES"
       debugServiceExtension = "internal"
@@ -62,19 +62,19 @@
       </BuildableProductRunnable>
       <CommandLineArguments>
          <CommandLineArgument
-            argument = "--listfile"
+            argument = "--rooted"
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "listfile.txt"
+            argument = "--treefile"
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "--skip"
-            isEnabled = "YES">
+            argument = "species-trees-nexus.txt"
+            isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "1"
+            argument = "species-trees-altnexus.txt"
             isEnabled = "YES">
          </CommandLineArgument>
       </CommandLineArguments>

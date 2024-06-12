@@ -74,6 +74,9 @@ class Galax
         std::string                         _version;
         bool                                _show_details;
 
+        bool                                _alt_nexus;
+        unsigned                            _alt_next_taxon_index;
+        
         std::ofstream                       _treef;     // file for storing majority rule consensus tree
         std::ofstream                       _outf;      // file used for output summary
         std::ofstream                       _detailsf;  // file used for details of clades

@@ -28,6 +28,8 @@ const unsigned Galax::_ALLSUBSETS = std::numeric_limits<unsigned>::max();
 
 Galax::Galax(const std::string outfile_prefix, const std::string version)
     {
+    _alt_nexus = false;
+    _alt_next_taxon_index = 0;
     _outfprefix = outfile_prefix;
     _version = version;
     }
@@ -196,87 +198,102 @@ void Galax::parseTranslate(const std::string & file_contents)
     {
     _translate.clear();
 
-    // The first time this function is called, the _translate command will be used to establish a _taxon_map
-    // such that _taxon_map[<taxon name>] = <taxon index>. Subsequent calls will create _translate anew but
-    // will not modify _taxon_map; however, an exception is thrown if a taxon is about to be added to _translate
-    // that is not a key in _taxon_map.
+    // The first time this function is called, the _translate command
+    // will be used to establish a _taxon_map such that
+    // _taxon_map[<taxon name>] = <taxon index>. Subsequent calls
+    // will create _translate anew but will not modify _taxon_map;
+    // however, an exception is thrown if a taxon is about to be
+    // added to _translate that is not a key in _taxon_map.
+    
+    // If there is no translate statement in the tree file, assume
+    // that the tree descriptions contain names and not numbers.
+    // In this case, _translate will be empty and _taxon_map will be
+    // populated using the taxon names from the first newick tree
+    // description read.
+    bool translate_statement_found = false;
 
-    // First, separate out the contents of the translate statement from the rest of the tree file
+    // First, separate out the contents of the translate
+    // statement from the rest of the tree file
     std::string translate_contents;
     std::regex pattern("[Tt]ranslate([\\S\\s]+?;)");
     std::smatch what;
     bool regex_ok = std::regex_search(file_contents, what, pattern);
     if (regex_ok)
         {
+        translate_statement_found = true;
+        
         // what[0] contains the whole string
         // what[1] contains the translate statement contents
-        
-        //std::ofstream doof("doof_translate_contents.txt");
-        //doof << what[1] << std::endl;
-        //doof.close();
                 
         // Construct a string using characters in contents from what[1].first to what[1].second
         translate_contents.insert(translate_contents.begin(), what[1].first, what[1].second);
         }
-    else
-        {
-        throw XGalax("regex failed to find translate statement in tree file");
-        }
+    //else
+    //    {
+    //    throw XGalax("regex failed to find translate statement in tree file");
+    //    }
 
-    // Now create the map by iterating through each element of the translate statement
-    //std::regex re("(\\d+)\\s+'?(.+?)'?,?$");
-    std::regex re("(\\d+)\\s+'?([\\s\\S]+?)'?\\s*[,;]");
-    std::sregex_iterator m1(translate_contents.begin(), translate_contents.end(), re);
-    std::sregex_iterator m2;
-    for (; m1 != m2; ++m1)
+    if (translate_statement_found)
         {
-        const std::match_results<std::string::const_iterator>& what = *m1;
+        // Now create the map by iterating through each element of the translate statement
+        //std::regex re("(\\d+)\\s+'?(.+?)'?,?$");
+        std::regex re("(\\d+)\\s+'?([\\s\\S]+?)'?\\s*[,;]");
+        std::sregex_iterator m1(translate_contents.begin(), translate_contents.end(), re);
+        std::sregex_iterator m2;
+        for (; m1 != m2; ++m1)
+            {
+            const std::match_results<std::string::const_iterator>& what = *m1;
+            
+            //std::ofstream doof("doof_translate_element.txt");
+            //doof << "taxon index = " << what[1] << std::endl;
+            //doof << "taxon name  = " << what[2] << std::endl;
+            //doof.close();
+            //std::cout << "taxon index = " << what[1] << std::endl;
+            //std::cout << "taxon name  = " << what[2] << std::endl;
+            
+            unsigned taxon_index = 0;
+            try
+                {
+                taxon_index = boost::lexical_cast<unsigned>(what[1].str());
+                }
+            catch(const boost::bad_lexical_cast &)
+                {
+                throw XGalax("Could not interpret taxon index in translate statement as a number");
+                }
+
+            // efficientAddOrCheck returns valid iterator on first insertion or if identical association already previously made
+            if (efficientAddOrCheck(_translate, taxon_index, what[2].str()) == _translate.end())
+                throw XGalax(boost::str(boost::format("Taxon name (%s) does not match name already associated (%s) with taxon %d") % what[2].str() % _translate[taxon_index] % taxon_index));
+            }
         
-        //std::ofstream doof("doof_translate_element.txt");
-        //doof << "taxon index = " << what[1] << std::endl;
-        //doof << "taxon name  = " << what[2] << std::endl;
-        //doof.close();
-        //std::cout << "taxon index = " << what[1] << std::endl;
-        //std::cout << "taxon name  = " << what[2] << std::endl;
-        
-        unsigned taxon_index = 0;
-        try
+        typedef std::map< unsigned, std::string > translate_t;
+        typedef std::map< std::string, unsigned > taxonmap_t;
+        if (_taxon_map.empty())
             {
-            taxon_index = boost::lexical_cast<unsigned>(what[1].str());
+            // Copy _translate to _taxon_map
+            BOOST_FOREACH(translate_t::value_type & p, _translate)
+                {
+                _taxon_map[p.second] = p.first;
+                }
             }
-        catch(const boost::bad_lexical_cast &)
+        else
             {
-            throw XGalax("Could not interpret taxon index in translate statement as a number");
-            }
+            // Check to make sure this file does not have more or fewer taxa than files previously processed
+            if (_translate.size() != _taxon_map.size())
+               throw XGalax("Galax requires taxa to be the same for all tree files processed.");
 
-        // efficientAddOrCheck returns valid iterator on first insertion or if identical association already previously made
-        if (efficientAddOrCheck(_translate, taxon_index, what[2].str()) == _translate.end())
-            throw XGalax(boost::str(boost::format("Taxon name (%s) does not match name already associated (%s) with taxon %d") % what[2].str() % _translate[taxon_index] % taxon_index));
+            // Check to make sure all taxa in _translate are keys in _taxon_map
+            BOOST_FOREACH(translate_t::value_type & p, _translate)
+                {
+                taxonmap_t::iterator it = _taxon_map.lower_bound(p.second);
+                if (it == _taxon_map.end())
+                    throw XGalax(boost::str(boost::format("Taxon name (%s) does not match any name stored for tree files read previously") % p.second));
+                }
+            }
+            _alt_nexus = false;
         }
-
-    typedef std::map< unsigned, std::string > translate_t;
-    typedef std::map< std::string, unsigned > taxonmap_t;
-    if (_taxon_map.empty())
-        {
-        // Copy _translate to _taxon_map
-        BOOST_FOREACH(translate_t::value_type & p, _translate)
-            {
-            _taxon_map[p.second] = p.first;
-            }
-        }
-    else
-        {
-        // Check to make sure this file does not have more or fewer taxa than files previously processed
-        if (_translate.size() != _taxon_map.size())
-           throw XGalax("Galax requires taxa to be the same for all tree files processed.");
-
-        // Check to make sure all taxa in _translate are keys in _taxon_map
-        BOOST_FOREACH(translate_t::value_type & p, _translate)
-            {
-            taxonmap_t::iterator it = _taxon_map.lower_bound(p.second);
-            if (it == _taxon_map.end())
-                throw XGalax(boost::str(boost::format("Taxon name (%s) does not match any name stored for tree files read previously") % p.second));
-            }
+        else {
+            _alt_nexus = true;
         }
     }
 
@@ -304,15 +321,30 @@ void Galax::getPhyloBayesNewicks(std::vector< std::string > & tree_descriptions,
 
 std::string Galax::standardizeNodeNumber(std::smatch const & what)
     {
-    int x = atoi(what[2].str().c_str());
+    std::string s;
+    if (_alt_nexus) {
+        std::string x = what[2].str();
+        if (_taxon_map.count(x) == 0) {
+            _taxon_map[x] = ++_alt_next_taxon_index;
+            s = boost::str(boost::format("%s%d:") % what[1] % _alt_next_taxon_index);
+        }
+        else {
+            unsigned stored_taxon_index = _taxon_map[x];
+            s = boost::str(boost::format("%s%d:") % what[1] % stored_taxon_index);
+        }
+    }
+    else {
+        int x = atoi(what[2].str().c_str());
 
-    // ensure that node numbers correspond to taxon indices stored in taxon_map,
-    // which are not necessarily the same as those used in the translate command that
-    // was in the tree file
-    std::string & stored_taxon_name = _translate[x];
-    assert(stored_taxon_name != "");
-    unsigned stored_taxon_index = _taxon_map[stored_taxon_name];
-    std::string s = boost::str(boost::format("%s%d") % what[1] % stored_taxon_index);
+        // ensure that node numbers correspond to taxon indices stored in taxon_map,
+        // which are not necessarily the same as those used in the translate command that
+        // was in the tree file
+        std::string & stored_taxon_name = _translate[x];
+        assert(stored_taxon_name != "");
+        unsigned stored_taxon_index = _taxon_map[stored_taxon_name];
+        s = boost::str(boost::format("%s%d") % what[1] % stored_taxon_index);
+    }
+    
     return s;
     }
 
@@ -364,8 +396,13 @@ std::string Galax::standardizeTreeDescriptionRevBayes(std::string & newick_in)
 
 std::string Galax::standardizeTreeDescription(std::string & newick_in)
     {
+    std::regex re("([(,])(\\d+):");
+    if (_alt_nexus) {
+        // Taxa in newick_in are in the form of names rather than numbers
+        re = std::regex("([(,])([^:]):");
+    }
+    
     std::string stdnewick;
-    std::regex re("([(,])(\\d+)");
     std::sregex_iterator m1(newick_in.begin(), newick_in.end(), re);
     std::sregex_iterator m2;
     std::sregex_iterator last;
@@ -373,23 +410,19 @@ std::string Galax::standardizeTreeDescription(std::string & newick_in)
         {
         std::smatch what = *m1;
         
+        //std::cerr << "what.prefix() = " << what.prefix() << std::endl;
+        //std::cerr << "what[1]       = " << what[1] << std::endl;
+        //std::cerr << "what[2]       = " << what[2] << std::endl;
+        //std::cerr << "what.suffix() = " << what.suffix() << std::endl;
+        
         stdnewick.append(what.prefix());
         stdnewick.append(standardizeNodeNumber(what));
-
-        //std::ofstream doof("doof_standardize.txt");
-        //doof << "what.prefix() = " << what.prefix()  << std::endl;
-        //doof << "what.suffix() = " << what.suffix()  << std::endl;
-        //doof << "what[0] = " << what[0] << std::endl;
-        //doof << "what[1] = " << what[1] << std::endl;
-        //doof << "what[2] = " << what[2] << std::endl;
-        //doof << "standardizeNodeNumber(what) = " << standardizeNodeNumber(what) << std::endl;
-        //doof << "stdnewick = " << stdnewick << std::endl;
-        //doof.close();
         
         last = m1;
         }
     std::smatch what = *last;
     stdnewick.append(what.suffix());
+
     return stdnewick;
     }
 

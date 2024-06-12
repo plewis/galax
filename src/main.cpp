@@ -21,7 +21,7 @@ using namespace galax;
 unsigned GalaxInfo::_sortby_index = 0;
 std::string program_name = "galax";
 unsigned major_version = 1;
-unsigned minor_version = 2;
+unsigned minor_version = 3;
 unsigned bugfix_version = 0;
 std::string tree_file_name = "";
 std::string list_file_name = "";
@@ -32,6 +32,15 @@ unsigned skipped_newicks = 0;
 unsigned outgroup_taxon = 1;
 bool trees_rooted = false;
 bool save_details = false;
+
+// Version history:
+// 1.0.0
+//  - original version used in the paper
+// 1.1.0
+// 1.2.0
+// 1.3.0
+//  - reads tree files containing newick descriptions with names rather than numbers
+//  - reads RevBayes tree files
 
 void processCommandLineOptions(int argc, const char * argv[])
     {
