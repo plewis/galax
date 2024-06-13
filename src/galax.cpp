@@ -342,7 +342,7 @@ std::string Galax::standardizeNodeNumber(std::smatch const & what)
         std::string & stored_taxon_name = _translate[x];
         assert(stored_taxon_name != "");
         unsigned stored_taxon_index = _taxon_map[stored_taxon_name];
-        s = boost::str(boost::format("%s%d") % what[1] % stored_taxon_index);
+        s = boost::str(boost::format("%s%d:") % what[1] % stored_taxon_index);
     }
     
     return s;

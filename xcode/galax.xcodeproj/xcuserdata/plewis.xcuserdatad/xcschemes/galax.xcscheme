@@ -75,6 +75,10 @@
          </CommandLineArgument>
          <CommandLineArgument
             argument = "species-trees-altnexus.txt"
+            isEnabled = "NO">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "species.trees.txt"
             isEnabled = "YES">
          </CommandLineArgument>
       </CommandLineArguments>
@@ -114,7 +118,7 @@
             ActionType = "Xcode.IDEStandardExecutionActionsCore.ExecutionActionType.ShellScriptAction">
             <ActionContent
                title = "Run Script"
-               scriptText = "exec &gt; &quot;/tmp/xcode_run_script.log&quot; 2&gt;&amp;1&#10;cp &quot;$ARCHIVE_PRODUCTS_PATH/usr/local/bin/galax&quot; /Users/plewis/bin/galax3&#10;"
+               scriptText = "exec &gt; &quot;/tmp/xcode_run_script.log&quot; 2&gt;&amp;1&#10;cp &quot;$ARCHIVE_PRODUCTS_PATH/usr/local/bin/galax&quot; /Users/plewis/bin/galax-latest&#10;"
                shellToInvoke = "/bin/bash">
             </ActionContent>
          </ExecutionAction>
