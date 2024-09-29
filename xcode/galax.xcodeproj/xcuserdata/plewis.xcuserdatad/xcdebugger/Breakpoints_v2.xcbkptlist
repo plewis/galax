@@ -14,8 +14,8 @@
             filePath = "../src/galax.cpp"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "1030"
-            endingLineNumber = "1030"
+            startingLineNumber = "1037"
+            endingLineNumber = "1037"
             landmarkName = "Galax::run(treefname, listfname, skip, trees_rooted, maptofname, mapto_trees_rooted, save_details, outgroup_taxon)"
             landmarkType = "7">
          </BreakpointContent>

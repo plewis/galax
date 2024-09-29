@@ -488,7 +488,7 @@ void Galax::getNewicksRevBayes(std::vector< std::string > & tree_descriptions, c
     //  ...
     //  10000	-839.9447	-893.1031	53.15838	(...newick...)[&index=102];
     tree_descriptions.clear();
-    std::regex re("\\d+\\s+[-.0-9]+\\s+[-.0-9]+\\s+[-.0-9]+\\s+(\\S+);", std::regex_constants::ECMAScript);
+    std::regex re("\\d+\\s+[-.0-9e]+\\s+[-.0-9e]+\\s+[-.0-9e]+\\s+(\\S+);", std::regex_constants::ECMAScript);
     std::sregex_iterator m1(file_contents.begin(), file_contents.end(), re);
     std::sregex_iterator m2;  // empty iterator used only to detect when we are done
     unsigned n = 0;
@@ -560,12 +560,19 @@ void Galax::processTrees(TreeManip<Node>::TreeManipShPtr tm, CCDMapType & ccdmap
     double max_entropy = log(n);
     double raw_entropy = log(n) - xlogx/n;
     double raw_Ipct = 100.0*(max_entropy - raw_entropy)/max_entropy;
+    
+    unsigned n2 = (unsigned)_translate.size();
+    double max_entropy2 = lognrooted(_rooted ? n2 : n2 - 1);
+    double raw_Ipct2 = 100.0*(max_entropy2 - raw_entropy)/max_entropy2;
+    
     _outf << std::endl;
     _outf << "Subset " << subset_index << std::endl;
-    _outf << boost::str(boost::format("  %12.5f raw entropy\n") % raw_entropy);
+    _outf << boost::str(boost::format("  %12.5f raw posterior entropy\n") % raw_entropy);
     _outf << boost::str(boost::format("  %12d sample size\n") % (unsigned)n);
     _outf << boost::str(boost::format("  %12.5f maximum entropy given sample size\n") % max_entropy);
-    _outf << boost::str(boost::format("  %12.5f percent information given sample size\n") % raw_Ipct);
+    _outf << boost::str(boost::format("  %12.5f maximum entropy given total num. topologies\n") % max_entropy2);
+    _outf << boost::str(boost::format("  %12.5f percent raw information given sample size\n") % raw_Ipct);
+    _outf << boost::str(boost::format("  %12.5f percent raw information given total num. topologies\n") % raw_Ipct2);
     _outf << std::endl;
 #endif
 

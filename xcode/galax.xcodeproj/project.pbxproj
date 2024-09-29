@@ -7,10 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		D18C0DC82518E0950095B172 /* libboost_filesystem.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D18C0DC32518E0950095B172 /* libboost_filesystem.a */; };
+		D14B1D892CA9767D00261141 /* libboost_filesystem.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D18C0DC32518E0950095B172 /* libboost_filesystem.a */; };
+		D14B1D8A2CA9767D00261141 /* libboost_program_options.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D18C0DC72518E0950095B172 /* libboost_program_options.a */; };
+		D14B1D8B2CA9767D00261141 /* libboost_system.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D18C0DC62518E0950095B172 /* libboost_system.a */; };
 		D18C0DCA2518E0950095B172 /* libncl.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D18C0DC52518E0950095B172 /* libncl.a */; };
-		D18C0DCB2518E0950095B172 /* libboost_system.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D18C0DC62518E0950095B172 /* libboost_system.a */; };
-		D18C0DCC2518E0950095B172 /* libboost_program_options.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D18C0DC72518E0950095B172 /* libboost_program_options.a */; };
 		D1D47CCF1A03222700D07933 /* galax.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D1D47CC61A03222700D07933 /* galax.cpp */; };
 		D1D47CD01A03222700D07933 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D1D47CC91A03222700D07933 /* main.cpp */; };
 /* End PBXBuildFile section */
@@ -57,10 +57,10 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				D18C0DC82518E0950095B172 /* libboost_filesystem.a in Frameworks */,
+				D14B1D892CA9767D00261141 /* libboost_filesystem.a in Frameworks */,
+				D14B1D8A2CA9767D00261141 /* libboost_program_options.a in Frameworks */,
+				D14B1D8B2CA9767D00261141 /* libboost_system.a in Frameworks */,
 				D18C0DCA2518E0950095B172 /* libncl.a in Frameworks */,
-				D18C0DCB2518E0950095B172 /* libboost_system.a in Frameworks */,
-				D18C0DCC2518E0950095B172 /* libboost_program_options.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -203,7 +203,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				EXCLUDED_ARCHS = arm64;
+				EXCLUDED_ARCHS = "";
 				GCC_C_LANGUAGE_STANDARD = gnu99;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_OPTIMIZATION_LEVEL = 0;
@@ -255,7 +255,7 @@
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				EXCLUDED_ARCHS = arm64;
+				EXCLUDED_ARCHS = "";
 				GCC_C_LANGUAGE_STANDARD = gnu99;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
@@ -273,6 +273,7 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 10.14;
 				MTL_ENABLE_DEBUG_INFO = NO;
+				ONLY_ACTIVE_ARCH = YES;
 				OTHER_LDFLAGS = "";
 				SDKROOT = macosx;
 			};
